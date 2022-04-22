@@ -1,4 +1,4 @@
-package pers.lenwind.container;
+package pers.lenwind.container.exception;
 
 public class MultiInjectException extends BaseException {
     public MultiInjectException(Class<?> instanceType) {
