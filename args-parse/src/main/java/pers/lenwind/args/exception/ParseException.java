@@ -1,4 +1,4 @@
-package pers.linwind.args.exception;
+package pers.lenwind.args.exception;
 
 public class ParseException extends RuntimeException {
     private String flag;

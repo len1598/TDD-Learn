@@ -1,4 +1,4 @@
-package pers.linwind.container;
+package pers.lenwind.container;
 
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.BeforeEach;
@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class ContainerTest {
     @Nested
-    class InjectionTest {
+    class ComponentConstruction {
         private ContextConfiguration contextConfiguration;
 
         @BeforeEach
@@ -21,31 +21,31 @@ public class ContainerTest {
 
         @Test
         void should_bind_instance_to_context() {
-            Bean instance = new Bean() {
+            Component instance = new Component() {
             };
-            contextConfiguration.bind(Bean.class, instance);
+            contextConfiguration.bind(Component.class, instance);
 
-            Bean bean = new Context(contextConfiguration).get(Bean.class).get();
-            assertSame(instance, bean);
+            Component component = new Context(contextConfiguration).get(Component.class).get();
+            assertSame(instance, component);
         }
 
         @Nested
-        class ConstructionTest {
+        class ComponentInjection {
             @Test
             void should_inject_instance_with_default_construction() {
-                contextConfiguration.bind(Bean.class, Instance.class);
+                contextConfiguration.bind(Component.class, Instance.class);
 
-                Bean bean = new Context(contextConfiguration).get(Bean.class).get();
-                assertTrue(bean instanceof Instance);
+                Component component = new Context(contextConfiguration).get(Component.class).get();
+                assertTrue(component instanceof Instance);
             }
 
             @Test
             void should_inject_instance_with_annotation_construction() {
                 Dependency dependency = new DependencyWithConstruction();
                 contextConfiguration.bind(Dependency.class, dependency);
-                contextConfiguration.bind(Bean.class, InstanceWithInject.class);
+                contextConfiguration.bind(Component.class, InstanceWithInject.class);
 
-                InstanceWithInject bean = (InstanceWithInject) new Context(contextConfiguration).get(Bean.class).get();
+                InstanceWithInject bean = (InstanceWithInject) new Context(contextConfiguration).get(Component.class).get();
                 assertSame(dependency, bean.dependency);
             }
 
@@ -53,9 +53,9 @@ public class ContainerTest {
             void should_inject_instance_with_dependency() {
                 contextConfiguration.bind(Dependency.class, DependencyWithDependency.class);
                 contextConfiguration.bind(String.class, "dependency");
-                contextConfiguration.bind(Bean.class, InstanceWithInject.class);
+                contextConfiguration.bind(Component.class, InstanceWithInject.class);
 
-                InstanceWithInject bean = (InstanceWithInject) new Context(contextConfiguration).get(Bean.class).get();
+                InstanceWithInject bean = (InstanceWithInject) new Context(contextConfiguration).get(Component.class).get();
                 assertNotNull(bean.dependency);
                 assertEquals("dependency", ((DependencyWithDependency) bean.dependency).dependency);
             }
@@ -64,7 +64,7 @@ public class ContainerTest {
             void should_throw_exception_if_multi_inject_annotation() {
                 MultiInjectException exception = assertThrows(
                         MultiInjectException.class,
-                        () -> contextConfiguration.bind(Bean.class, MultiInjectConstruction.class));
+                        () -> contextConfiguration.bind(Component.class, MultiInjectConstruction.class));
                 assertEquals(MultiInjectConstruction.class, exception.getInstanceType());
             }
 
@@ -72,13 +72,13 @@ public class ContainerTest {
             void should_throw_exception_if_no_inject_annotation_nor_default_construction() {
                 NoAvailableConstructionException exception = assertThrows(
                         NoAvailableConstructionException.class,
-                        () -> contextConfiguration.bind(Bean.class, NoAvailableConstruction.class));
+                        () -> contextConfiguration.bind(Component.class, NoAvailableConstruction.class));
                 assertEquals(NoAvailableConstruction.class, exception.getInstanceType());
             }
 
             @Test
             void should_throw_exception_if_dependency_not_found() {
-                contextConfiguration.bind(Bean.class, InstanceWithInject.class);
+                contextConfiguration.bind(Component.class, InstanceWithInject.class);
 
                 DependencyNotFoundException exception = assertThrows(DependencyNotFoundException.class, () -> new Context(contextConfiguration));
                 assertEquals(InstanceWithInject.class, exception.getInstanceType());
@@ -87,7 +87,7 @@ public class ContainerTest {
 
             @Test
             void should_throw_exception_if_cyclic_transitive_dependency() {
-                contextConfiguration.bind(Bean.class, InstanceWithInject.class);
+                contextConfiguration.bind(Component.class, InstanceWithInject.class);
                 contextConfiguration.bind(Dependency.class, DependencyWithAnotherDependency.class);
                 contextConfiguration.bind(AnotherDependency.class, DependencyWithBean.class);
 
@@ -108,15 +108,15 @@ public class ContainerTest {
     }
 
     @Nested
-    class DependencyWithConstructionTest {
+    class DependencySelection {
     }
 
     @Nested
-    class LifeCycleTest {
+    class LifeCycleManagement {
     }
 }
 
-interface Bean {
+interface Component {
 }
 
 interface Dependency {
@@ -125,7 +125,7 @@ interface Dependency {
 interface AnotherDependency {
 }
 
-class Instance implements Bean {
+class Instance implements Component {
     public Instance() {
     }
 }
@@ -142,7 +142,7 @@ class DependencyWithDependency implements Dependency {
     }
 }
 
-class InstanceWithInject implements Bean {
+class InstanceWithInject implements Component {
     Dependency dependency;
 
     @Inject
@@ -151,7 +151,7 @@ class InstanceWithInject implements Bean {
     }
 }
 
-class MultiInjectConstruction implements Bean {
+class MultiInjectConstruction implements Component {
 
     String obj;
 
@@ -175,15 +175,15 @@ class DependencyWithAnotherDependency implements Dependency {
 }
 
 class DependencyWithBean implements AnotherDependency {
-    Bean bean;
+    Component component;
 
     @Inject
-    public DependencyWithBean(Bean bean) {
-        this.bean = bean;
+    public DependencyWithBean(Component component) {
+        this.component = component;
     }
 }
 
-class NoAvailableConstruction implements Bean {
+class NoAvailableConstruction implements Component {
     private NoAvailableConstruction() {
     }
 }

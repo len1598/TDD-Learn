@@ -1,4 +1,4 @@
-package pers.linwind.container;
+package pers.lenwind.container;
 
 public class DependencyNotFoundException extends BaseException {
     private Class<?> dependency;

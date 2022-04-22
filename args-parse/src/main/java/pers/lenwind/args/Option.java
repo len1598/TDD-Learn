@@ -1,4 +1,4 @@
-package pers.linwind.args;
+package pers.lenwind.args;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

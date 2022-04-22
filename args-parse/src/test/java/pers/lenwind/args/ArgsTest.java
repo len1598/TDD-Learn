@@ -1,8 +1,8 @@
-package pers.linwind.args;
+package pers.lenwind.args;
 
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import pers.linwind.args.exception.ParseException;
+import pers.lenwind.args.exception.ParseException;
 
 import static org.junit.jupiter.api.Assertions.*;
 

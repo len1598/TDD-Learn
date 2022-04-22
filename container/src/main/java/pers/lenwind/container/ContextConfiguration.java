@@ -1,4 +1,4 @@
-package pers.linwind.container;
+package pers.lenwind.container;
 
 import jakarta.inject.Inject;
 
@@ -17,13 +17,15 @@ public class ContextConfiguration {
         contextBuilder.put(clazz, () -> instance);
     }
 
-    public <T, R extends T> void bind(Class<T> type, Class<R> implement) {
+    public <ComponentType, InstanceType extends ComponentType>
+    void bind(Class<ComponentType> type, Class<InstanceType> implement) {
         Constructor<?> constructor = getConstructor(implement);
         contextBuilder.put(type, new InstanceBuilder(constructor));
     }
 
     public Map<Class<?>, Object> initContainer() {
-        return contextBuilder.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().build()));
+        return contextBuilder.entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().build()));
     }
 
     private interface Builder {
@@ -66,20 +68,20 @@ public class ContextConfiguration {
         }
     }
 
-    private <T> Constructor<?> getConstructor(Class<T> implement) {
-        List<Constructor<?>> constructors = Arrays.stream(implement.getConstructors())
+    private <T> Constructor<?> getConstructor(Class<T> implementation) {
+        List<Constructor<?>> constructors = Arrays.stream(implementation.getConstructors())
                 .filter(constructor -> constructor.isAnnotationPresent(Inject.class)).toList();
         if (constructors.size() > 1) {
-            throw new MultiInjectException(implement);
+            throw new MultiInjectException(implementation);
         }
-        return constructors.isEmpty() ? getDefaultConstructor(implement) : constructors.get(0);
+        return constructors.isEmpty() ? getDefaultConstructor(implementation) : constructors.get(0);
     }
 
-    private <T> Constructor<T> getDefaultConstructor(Class<T> implement) {
+    private <T> Constructor<T> getDefaultConstructor(Class<T> implementation) {
         try {
-            return implement.getConstructor();
+            return implementation.getConstructor();
         } catch (NoSuchMethodException e) {
-            throw new NoAvailableConstructionException(implement);
+            throw new NoAvailableConstructionException(implementation);
         }
     }
 }

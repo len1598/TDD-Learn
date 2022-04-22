@@ -1,10 +1,11 @@
-package pers.linwind.container;
+package pers.lenwind.container;
 
 import java.util.HashSet;
 import java.util.Set;
 
 public class CyclicDependencyException extends BaseException {
     private final Set<Class<?>> dependencies = new HashSet<>();
+
     public CyclicDependencyException(Class<?> instanceType, CyclicDependencyException cause) {
         this(instanceType);
         this.dependencies.addAll(cause.getDependencies());
