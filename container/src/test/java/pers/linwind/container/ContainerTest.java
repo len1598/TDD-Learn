@@ -5,25 +5,27 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import java.util.Set;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 public class ContainerTest {
     @Nested
     class InjectionTest {
-        private Context context;
+        private ContextConfiguration contextConfiguration;
 
         @BeforeEach
         void setUp() {
-            context = new Context();
+            contextConfiguration = new ContextConfiguration();
         }
 
         @Test
         void should_bind_instance_to_context() {
             Bean instance = new Bean() {
             };
-            context.bind(Bean.class, instance);
+            contextConfiguration.bind(Bean.class, instance);
 
-            Bean bean = context.get(Bean.class).get();
+            Bean bean = new Context(contextConfiguration).get(Bean.class).get();
             assertSame(instance, bean);
         }
 
@@ -31,61 +33,68 @@ public class ContainerTest {
         class ConstructionTest {
             @Test
             void should_inject_instance_with_default_construction() {
-                context.bind(Bean.class, Instance.class);
+                contextConfiguration.bind(Bean.class, Instance.class);
 
-                Bean bean = context.get(Bean.class).get();
+                Bean bean = new Context(contextConfiguration).get(Bean.class).get();
                 assertTrue(bean instanceof Instance);
             }
 
             @Test
             void should_inject_instance_with_annotation_construction() {
                 Dependency dependency = new DependencyWithConstruction();
-                context.bind(Dependency.class, dependency);
-                context.bind(Bean.class, InstanceWithInject.class);
+                contextConfiguration.bind(Dependency.class, dependency);
+                contextConfiguration.bind(Bean.class, InstanceWithInject.class);
 
-                InstanceWithInject bean = (InstanceWithInject) context.get(Bean.class).get();
+                InstanceWithInject bean = (InstanceWithInject) new Context(contextConfiguration).get(Bean.class).get();
                 assertSame(dependency, bean.dependency);
             }
 
             @Test
             void should_inject_instance_with_dependency() {
-                context.bind(Dependency.class, DependencyWithDependency.class);
-                context.bind(String.class, "dependency");
-                context.bind(Bean.class, InstanceWithInject.class);
+                contextConfiguration.bind(Dependency.class, DependencyWithDependency.class);
+                contextConfiguration.bind(String.class, "dependency");
+                contextConfiguration.bind(Bean.class, InstanceWithInject.class);
 
-                InstanceWithInject bean = (InstanceWithInject) context.get(Bean.class).get();
+                InstanceWithInject bean = (InstanceWithInject) new Context(contextConfiguration).get(Bean.class).get();
                 assertNotNull(bean.dependency);
                 assertEquals("dependency", ((DependencyWithDependency) bean.dependency).dependency);
             }
 
             @Test
             void should_throw_exception_if_multi_inject_annotation() {
-                assertThrows(
+                MultiInjectException exception = assertThrows(
                         MultiInjectException.class,
-                        () -> context.bind(Bean.class, MultiInjectConstruction.class));
+                        () -> contextConfiguration.bind(Bean.class, MultiInjectConstruction.class));
+                assertEquals(MultiInjectConstruction.class, exception.getInstanceType());
             }
 
             @Test
             void should_throw_exception_if_no_inject_annotation_nor_default_construction() {
-                assertThrows(
+                NoAvailableConstructionException exception = assertThrows(
                         NoAvailableConstructionException.class,
-                        () -> context.bind(Bean.class, NoAvailableConstruction.class));
+                        () -> contextConfiguration.bind(Bean.class, NoAvailableConstruction.class));
+                assertEquals(NoAvailableConstruction.class, exception.getInstanceType());
             }
 
             @Test
             void should_throw_exception_if_dependency_not_found() {
-                context.bind(Bean.class, InstanceWithInject.class);
+                contextConfiguration.bind(Bean.class, InstanceWithInject.class);
 
-                assertThrows(DependencyNotFoundException.class, () -> context.get(Bean.class));
+                DependencyNotFoundException exception = assertThrows(DependencyNotFoundException.class, () -> new Context(contextConfiguration));
+                assertEquals(InstanceWithInject.class, exception.getInstanceType());
+                assertEquals(Dependency.class, exception.getDependencyType());
             }
 
             @Test
             void should_throw_exception_if_cyclic_transitive_dependency() {
-                context.bind(Bean.class, InstanceWithInject.class);
-                context.bind(Dependency.class, DependencyWithAnotherDependency.class);
-                context.bind(AnotherDependency.class, DependencyWithBean.class);
+                contextConfiguration.bind(Bean.class, InstanceWithInject.class);
+                contextConfiguration.bind(Dependency.class, DependencyWithAnotherDependency.class);
+                contextConfiguration.bind(AnotherDependency.class, DependencyWithBean.class);
 
-                assertThrows(CyclicDependencyException.class, () -> context.get(Bean.class));
+                CyclicDependencyException exception = assertThrows(CyclicDependencyException.class, () -> new Context(contextConfiguration));
+                Set<Class<?>> dependencies = Set.of(InstanceWithInject.class, DependencyWithAnotherDependency.class, DependencyWithBean.class);
+                assertTrue(exception.getDependencies().containsAll(dependencies));
+                assertEquals(InstanceWithInject.class, exception.getInstanceType());
             }
         }
 
