@@ -7,6 +7,7 @@ import pers.lenwind.container.exception.MultiInjectException;
 import pers.lenwind.container.exception.NoAvailableConstructionException;
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 
@@ -56,7 +57,12 @@ public class ContextConfiguration {
                 Object[] parameters = Arrays.stream(constructor.getParameterTypes())
                         .map(dependency -> componentProviders.get(dependency).get())
                         .toArray();
-                return constructor.newInstance(parameters);
+                Object instance = constructor.newInstance(parameters);
+                for (Field field : getFieldDependencies(componentType)) {
+                    field.setAccessible(true);
+                    field.set(instance, componentProviders.get(field.getType()).get());
+                }
+                return instance;
             } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
                 throw new RuntimeException(e);
             }
@@ -77,7 +83,7 @@ public class ContextConfiguration {
 
         private <T> Constructor<T> getDefaultConstructor(Class<T> implementation) {
             try {
-                return implementation.getConstructor();
+                return implementation.getDeclaredConstructor();
             } catch (NoSuchMethodException e) {
                 throw new NoAvailableConstructionException(implementation);
             }
@@ -96,7 +102,14 @@ public class ContextConfiguration {
 
         public void initDependencies() {
             constructor = getConstructor(componentType);
-            dependencies = Arrays.stream(constructor.getParameterTypes()).toList();
+            dependencies = new ArrayList<>();
+            dependencies.addAll(List.of(constructor.getParameterTypes()));
+            dependencies.addAll(getFieldDependencies(componentType).stream().map(Field::getType).toList());
+        }
+
+        private List<Field> getFieldDependencies(Class<?> componentType) {
+            return Arrays.stream(componentType.getDeclaredFields())
+                    .filter(field -> field.isAnnotationPresent(Inject.class)).toList();
         }
 
         private void checkCyclicDependencies(ComponentProvider provider, Stack<Class<?>> dependencyStack) {
@@ -106,7 +119,7 @@ public class ContextConfiguration {
             dependencyStack.push(provider.componentType);
             provider.getDependencies().forEach(type -> {
                 if (componentProviders.get(type) instanceof ComponentProvider componentProvider) {
-                    checkCyclicDependencies(componentProvider , dependencyStack);
+                    checkCyclicDependencies(componentProvider, dependencyStack);
                 }
             });
             dependencyStack.pop();

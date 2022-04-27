@@ -109,16 +109,17 @@ public class ContainerTest {
         class FieldTest {
             @Test
             void should_inject_field_dependencies() {
-                class ComponentWIthFieldDependency implements Component {
-                    @Inject
-                    private Dependency dependency;
-                }
                 contextConfiguration.bind(Component.class, ComponentWIthFieldDependency.class);
                 contextConfiguration.bind(Dependency.class, DependencyWithConstruction.class);
 
                 Context context = new Context(contextConfiguration);
                 Component component = context.get(Component.class).get();
-                assertEquals(DependencyWithDependency.class, ((ComponentWIthFieldDependency) component).dependency.getClass());
+                assertEquals(DependencyWithConstruction.class, ((ComponentWIthFieldDependency) component).dependency.getClass());
+            }
+
+            @Test
+            void should_inject_super_class_field_dependencies() {
+
             }
 
             @Test
@@ -209,6 +210,11 @@ class DependencyWithBean implements AnotherDependency {
 }
 
 class NoAvailableConstruction implements Component {
-    private NoAvailableConstruction() {
+    private NoAvailableConstruction(String noDefault) {
     }
+}
+
+class ComponentWIthFieldDependency implements Component {
+    @Inject
+    Dependency dependency;
 }
