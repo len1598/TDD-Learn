@@ -1,24 +1,15 @@
 package pers.lenwind.container.exception;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.util.List;
 
-public class CyclicDependencyException extends BaseException {
-    private final Set<Class<?>> dependencies;
+public class CyclicDependencyException extends RuntimeException {
+    private final List<Class<?>> dependencies;
 
-    public CyclicDependencyException(Class<?> instanceType, CyclicDependencyException cause) {
-        super(cause.instanceType);
-        this.dependencies = cause.dependencies;
-        this.dependencies.add(instanceType);
+    public CyclicDependencyException(List<Class<?>> classes) {
+        dependencies = classes;
     }
 
-    public CyclicDependencyException(Class<?> instanceType) {
-        super(instanceType);
-        dependencies = new HashSet<>();
-        dependencies.add(instanceType);
-    }
-
-    public Set<Class<?>> getDependencies() {
+    public List<Class<?>> getDependencies() {
         return dependencies;
     }
 }

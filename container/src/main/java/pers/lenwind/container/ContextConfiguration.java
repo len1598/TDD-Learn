@@ -8,10 +8,7 @@ import pers.lenwind.container.exception.NoAvailableConstructionException;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class ContextConfiguration {
     private final Map<Class<?>, Provider> componentProviders = new HashMap<>();
@@ -28,6 +25,11 @@ public class ContextConfiguration {
     public Map<Class<?>, Provider> initContainer() {
         componentProviders.values().forEach(provider -> {
             if (provider instanceof ComponentProvider componentProvider) {
+                componentProvider.initDependencies();
+            }
+        });
+        componentProviders.values().forEach(provider -> {
+            if (provider instanceof ComponentProvider componentProvider) {
                 componentProvider.checkDependencies();
             }
         });
@@ -38,12 +40,11 @@ public class ContextConfiguration {
         Object get();
     }
 
-    private class ComponentProvider implements Provider {
-        boolean cyclicFlag;
-
+    class ComponentProvider implements Provider {
         Class<?> componentType;
 
         List<Class<?>> dependencies;
+        private Constructor<?> constructor;
 
         ComponentProvider(Class<?> componentType) {
             this.componentType = componentType;
@@ -51,28 +52,13 @@ public class ContextConfiguration {
 
         @Override
         public Object get() {
-            if (cyclicFlag) {
-                throw new CyclicDependencyException(componentType);
-            }
-            cyclicFlag = true;
-            Constructor<?> constructor = getConstructor(componentType);
             try {
                 Object[] parameters = Arrays.stream(constructor.getParameterTypes())
-                        .map(dependency -> {
-                            Provider provider = componentProviders.get(dependency);
-                            if (provider == null) {
-                                throw new DependencyNotFoundException(constructor.getDeclaringClass(), dependency);
-                            }
-                            return provider.get();
-                        })
+                        .map(dependency -> componentProviders.get(dependency).get())
                         .toArray();
                 return constructor.newInstance(parameters);
-            } catch (CyclicDependencyException e) {
-                throw new CyclicDependencyException(componentType, e);
             } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
                 throw new RuntimeException(e);
-            } finally {
-                cyclicFlag = false;
             }
         }
 
@@ -98,7 +84,32 @@ public class ContextConfiguration {
         }
 
         public void checkDependencies() {
+            dependencies.forEach(dependency -> {
+                if (!componentProviders.containsKey(dependency)) {
+                    throw new DependencyNotFoundException(constructor.getDeclaringClass(), dependency);
+                }
 
+            });
+            Stack<Class<?>> dependencyStack = new Stack<>();
+            checkCyclicDependencies(this, dependencyStack);
+        }
+
+        public void initDependencies() {
+            constructor = getConstructor(componentType);
+            dependencies = Arrays.stream(constructor.getParameterTypes()).toList();
+        }
+
+        private void checkCyclicDependencies(ComponentProvider provider, Stack<Class<?>> dependencyStack) {
+            if (dependencyStack.contains(provider.componentType)) {
+                throw new CyclicDependencyException(dependencyStack.stream().toList());
+            }
+            dependencyStack.push(provider.componentType);
+            provider.getDependencies().forEach(type -> {
+                if (componentProviders.get(type) instanceof ComponentProvider componentProvider) {
+                    checkCyclicDependencies(componentProvider , dependencyStack);
+                }
+            });
+            dependencyStack.pop();
         }
     }
 }

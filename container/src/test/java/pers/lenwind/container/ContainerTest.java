@@ -66,17 +66,21 @@ public class ContainerTest {
 
             @Test
             void should_throw_exception_if_multi_inject_annotation() {
+                contextConfiguration.bind(Component.class, MultiInjectConstruction.class);
+
                 MultiInjectException exception = assertThrows(
                         MultiInjectException.class,
-                        () -> contextConfiguration.bind(Component.class, MultiInjectConstruction.class));
+                        () -> new Context(contextConfiguration));
                 assertEquals(MultiInjectConstruction.class, exception.getInstanceType());
             }
 
             @Test
             void should_throw_exception_if_no_inject_annotation_nor_default_construction() {
+                contextConfiguration.bind(Component.class, NoAvailableConstruction.class);
+
                 NoAvailableConstructionException exception = assertThrows(
                         NoAvailableConstructionException.class,
-                        () -> contextConfiguration.bind(Component.class, NoAvailableConstruction.class));
+                        () -> new Context(contextConfiguration));
                 assertEquals(NoAvailableConstruction.class, exception.getInstanceType());
             }
 
@@ -98,7 +102,6 @@ public class ContainerTest {
                 CyclicDependencyException exception = assertThrows(CyclicDependencyException.class, () -> new Context(contextConfiguration));
                 Set<Class<?>> dependencies = Set.of(InstanceWithInject.class, DependencyWithAnotherDependency.class, DependencyWithBean.class);
                 assertTrue(exception.getDependencies().containsAll(dependencies));
-//                assertEquals(InstanceWithInject.class, exception.getInstanceType());
             }
         }
 
