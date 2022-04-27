@@ -1,5 +1,8 @@
 package pers.lenwind.container.exception;
 
+import lombok.ToString;
+
+@ToString
 public class BaseException extends RuntimeException {
     protected Class<?> instanceType;
 

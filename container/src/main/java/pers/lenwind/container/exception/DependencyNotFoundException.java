@@ -1,5 +1,8 @@
 package pers.lenwind.container.exception;
 
+import lombok.ToString;
+
+@ToString(callSuper = true)
 public class DependencyNotFoundException extends BaseException {
     private Class<?> dependency;
 

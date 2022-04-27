@@ -107,6 +107,24 @@ public class ContainerTest {
 
         @Nested
         class FieldTest {
+            @Test
+            void should_inject_field_dependencies() {
+                class ComponentWIthFieldDependency implements Component {
+                    @Inject
+                    private Dependency dependency;
+                }
+                contextConfiguration.bind(Component.class, ComponentWIthFieldDependency.class);
+                contextConfiguration.bind(Dependency.class, DependencyWithConstruction.class);
+
+                Context context = new Context(contextConfiguration);
+                Component component = context.get(Component.class).get();
+                assertEquals(DependencyWithDependency.class, ((ComponentWIthFieldDependency) component).dependency.getClass());
+            }
+
+            @Test
+            void should_throw_exception_if_cannot_inject_field_dependencies() {
+
+            }
         }
 
         @Nested
