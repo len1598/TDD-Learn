@@ -24,17 +24,25 @@ public class ContextConfiguration {
     }
 
     public Map<Class<?>, Provider> initContainer() {
+        initDependencies();
+        checkDependencies();
+        return componentProviders;
+    }
+
+    private void checkDependencies() {
+        componentProviders.values().forEach(provider -> {
+            if (provider instanceof ComponentProvider componentProvider) {
+                componentProvider.checkCyclicDependencies(componentProvider, new Stack<>());
+            }
+        });
+    }
+
+    private void initDependencies() {
         componentProviders.values().forEach(provider -> {
             if (provider instanceof ComponentProvider componentProvider) {
                 componentProvider.initDependencies();
             }
         });
-        componentProviders.values().forEach(provider -> {
-            if (provider instanceof ComponentProvider componentProvider) {
-                componentProvider.checkDependencies();
-            }
-        });
-        return componentProviders;
     }
 
     public interface Provider {
@@ -55,10 +63,10 @@ public class ContextConfiguration {
         public Object get() {
             try {
                 Object[] parameters = Arrays.stream(constructor.getParameterTypes())
-                        .map(dependency -> componentProviders.get(dependency).get())
-                        .toArray();
+                    .map(dependency -> componentProviders.get(dependency).get())
+                    .toArray();
                 Object instance = constructor.newInstance(parameters);
-                for (Field field : getFieldDependencies(componentType)) {
+                for (Field field : ComponentUtils.getFieldDependencies(componentType)) {
                     field.setAccessible(true);
                     field.set(instance, componentProviders.get(field.getType()).get());
                 }
@@ -68,48 +76,11 @@ public class ContextConfiguration {
             }
         }
 
-        public List<Class<?>> getDependencies() {
-            return dependencies;
-        }
-
-        private <T> Constructor<?> getConstructor(Class<T> implementation) {
-            List<Constructor<?>> constructors = Arrays.stream(implementation.getConstructors())
-                    .filter(constructor -> constructor.isAnnotationPresent(Inject.class)).toList();
-            if (constructors.size() > 1) {
-                throw new MultiInjectException(implementation);
-            }
-            return constructors.isEmpty() ? getDefaultConstructor(implementation) : constructors.get(0);
-        }
-
-        private <T> Constructor<T> getDefaultConstructor(Class<T> implementation) {
-            try {
-                return implementation.getDeclaredConstructor();
-            } catch (NoSuchMethodException e) {
-                throw new NoAvailableConstructionException(implementation);
-            }
-        }
-
-        public void checkDependencies() {
-            dependencies.forEach(dependency -> {
-                if (!componentProviders.containsKey(dependency)) {
-                    throw new DependencyNotFoundException(constructor.getDeclaringClass(), dependency);
-                }
-
-            });
-            Stack<Class<?>> dependencyStack = new Stack<>();
-            checkCyclicDependencies(this, dependencyStack);
-        }
-
         public void initDependencies() {
-            constructor = getConstructor(componentType);
+            constructor = ComponentUtils.getConstructor(componentType);
             dependencies = new ArrayList<>();
             dependencies.addAll(List.of(constructor.getParameterTypes()));
-            dependencies.addAll(getFieldDependencies(componentType).stream().map(Field::getType).toList());
-        }
-
-        private List<Field> getFieldDependencies(Class<?> componentType) {
-            return Arrays.stream(componentType.getDeclaredFields())
-                    .filter(field -> field.isAnnotationPresent(Inject.class)).toList();
+            dependencies.addAll(ComponentUtils.getFieldDependencies(componentType).stream().map(Field::getType).toList());
         }
 
         private void checkCyclicDependencies(ComponentProvider provider, Stack<Class<?>> dependencyStack) {
@@ -117,12 +88,40 @@ public class ContextConfiguration {
                 throw new CyclicDependencyException(dependencyStack.stream().toList());
             }
             dependencyStack.push(provider.componentType);
-            provider.getDependencies().forEach(type -> {
-                if (componentProviders.get(type) instanceof ComponentProvider componentProvider) {
+            provider.dependencies.forEach(dependencyType -> {
+                Provider dependency = componentProviders.get(dependencyType);
+                if (dependency == null) {
+                    throw new DependencyNotFoundException(provider.componentType, dependencyType);
+                }
+                if (dependency instanceof ComponentProvider componentProvider) {
                     checkCyclicDependencies(componentProvider, dependencyStack);
                 }
             });
             dependencyStack.pop();
+        }
+    }
+
+    private static class ComponentUtils {
+        static <T> Constructor<?> getConstructor(Class<T> implementation) {
+            List<Constructor<?>> constructors = Arrays.stream(implementation.getConstructors())
+                .filter(constructor -> constructor.isAnnotationPresent(Inject.class)).toList();
+            if (constructors.size() > 1) {
+                throw new MultiInjectException(implementation);
+            }
+            return constructors.isEmpty() ? getDefaultConstructor(implementation) : constructors.get(0);
+        }
+
+        static <T> Constructor<T> getDefaultConstructor(Class<T> implementation) {
+            try {
+                return implementation.getDeclaredConstructor();
+            } catch (NoSuchMethodException e) {
+                throw new NoAvailableConstructionException(implementation);
+            }
+        }
+
+        static List<Field> getFieldDependencies(Class<?> componentType) {
+            return Arrays.stream(componentType.getDeclaredFields())
+                .filter(field -> field.isAnnotationPresent(Inject.class)).toList();
         }
     }
 }
