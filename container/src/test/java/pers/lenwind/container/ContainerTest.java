@@ -33,6 +33,26 @@ public class ContainerTest {
             assertSame(instance, component);
         }
 
+        @Test
+        void should_throw_exception_if_dependency_not_found() {
+            contextConfiguration.bind(Component.class, InstanceWithInject.class);
+
+            DependencyNotFoundException exception = assertThrows(DependencyNotFoundException.class, () -> new Context(contextConfiguration));
+            assertEquals(InstanceWithInject.class, exception.getInstanceType());
+            assertEquals(Dependency.class, exception.getDependencyType());
+        }
+
+        @Test
+        void should_throw_exception_if_cyclic_transitive_dependency() {
+            contextConfiguration.bind(Component.class, InstanceWithInject.class);
+            contextConfiguration.bind(Dependency.class, DependencyWithAnotherDependency.class);
+            contextConfiguration.bind(AnotherDependency.class, DependencyWithBean.class);
+
+            CyclicDependencyException exception = assertThrows(CyclicDependencyException.class, () -> new Context(contextConfiguration));
+            Set<Class<?>> dependencies = Set.of(InstanceWithInject.class, DependencyWithAnotherDependency.class, DependencyWithBean.class);
+            assertTrue(exception.getDependencies().containsAll(dependencies));
+        }
+
         @Nested
         class ComponentInjection {
             @Test
@@ -84,52 +104,29 @@ public class ContainerTest {
                 assertEquals(NoAvailableConstruction.class, exception.getInstanceType());
             }
 
-            @Test
-            void should_throw_exception_if_dependency_not_found() {
-                contextConfiguration.bind(Component.class, InstanceWithInject.class);
 
-                DependencyNotFoundException exception = assertThrows(DependencyNotFoundException.class, () -> new Context(contextConfiguration));
-                assertEquals(InstanceWithInject.class, exception.getInstanceType());
-                assertEquals(Dependency.class, exception.getDependencyType());
-            }
-
-            @Test
-            void should_throw_exception_if_cyclic_transitive_dependency() {
-                contextConfiguration.bind(Component.class, InstanceWithInject.class);
-                contextConfiguration.bind(Dependency.class, DependencyWithAnotherDependency.class);
-                contextConfiguration.bind(AnotherDependency.class, DependencyWithBean.class);
-
-                CyclicDependencyException exception = assertThrows(CyclicDependencyException.class, () -> new Context(contextConfiguration));
-                Set<Class<?>> dependencies = Set.of(InstanceWithInject.class, DependencyWithAnotherDependency.class, DependencyWithBean.class);
-                assertTrue(exception.getDependencies().containsAll(dependencies));
-            }
         }
 
         @Nested
         class FieldTest {
             @Test
             void should_inject_field_dependencies() {
-                contextConfiguration.bind(Component.class, ComponentWIthFieldDependency.class);
+                contextConfiguration.bind(Component.class, ComponentWithFieldDependency.class);
                 contextConfiguration.bind(Dependency.class, DependencyWithConstruction.class);
 
                 Context context = new Context(contextConfiguration);
                 Component component = context.get(Component.class).get();
-                assertEquals(DependencyWithConstruction.class, ((ComponentWIthFieldDependency) component).dependency.getClass());
+                assertEquals(DependencyWithConstruction.class, ((ComponentWithFieldDependency) component).dependency.getClass());
             }
 
             @Test
             void should_inject_super_class_field_dependencies() {
-                contextConfiguration.bind(Component.class, ComponentWIthSuperFieldDependency.class);
+                contextConfiguration.bind(Component.class, ComponentWithSuperFieldDependency.class);
                 contextConfiguration.bind(Dependency.class, DependencyWithConstruction.class);
 
                 Context context = new Context(contextConfiguration);
                 Component component = context.get(Component.class).get();
-                assertEquals(DependencyWithConstruction.class, ((ComponentWIthSuperFieldDependency) component).dependency.getClass());
-            }
-
-            @Test
-            void should_throw_exception_if_cannot_inject_field_dependencies() {
-
+                assertEquals(DependencyWithConstruction.class, ((ComponentWithSuperFieldDependency) component).dependency.getClass());
             }
         }
 
@@ -219,10 +216,10 @@ class NoAvailableConstruction implements Component {
     }
 }
 
-class ComponentWIthFieldDependency implements Component {
+class ComponentWithFieldDependency implements Component {
     @Inject
     Dependency dependency;
 }
 
-class ComponentWIthSuperFieldDependency extends ComponentWIthFieldDependency {
+class ComponentWithSuperFieldDependency extends ComponentWithFieldDependency {
 }
