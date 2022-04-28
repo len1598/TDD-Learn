@@ -132,6 +132,17 @@ public class ContainerTest {
 
         @Nested
         class MethodTest {
+            @Test
+            void should_inject_dependency_if_method_tag_annotation() {
+                Dependency dependency = new Dependency() {
+                };
+                contextConfiguration.bind(Component.class, ComponentWithMethodInject.class);
+                contextConfiguration.bind(Dependency.class, dependency);
+
+                ComponentWithMethodInject component =
+                    (ComponentWithMethodInject) new Context(contextConfiguration).get(Component.class).get();
+                assertSame(dependency, component.dependency);
+            }
         }
     }
 
@@ -222,4 +233,13 @@ class ComponentWithFieldDependency implements Component {
 }
 
 class ComponentWithSuperFieldDependency extends ComponentWithFieldDependency {
+}
+
+class ComponentWithMethodInject implements Component {
+    Dependency dependency;
+
+    @Inject
+    public void setDependency(Dependency dependency) {
+        this.dependency = dependency;
+    }
 }
