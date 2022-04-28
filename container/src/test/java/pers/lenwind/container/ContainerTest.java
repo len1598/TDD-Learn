@@ -69,8 +69,8 @@ public class ContainerTest {
                 contextConfiguration.bind(Component.class, MultiInjectConstruction.class);
 
                 MultiInjectException exception = assertThrows(
-                        MultiInjectException.class,
-                        () -> new Context(contextConfiguration));
+                    MultiInjectException.class,
+                    () -> new Context(contextConfiguration));
                 assertEquals(MultiInjectConstruction.class, exception.getInstanceType());
             }
 
@@ -79,8 +79,8 @@ public class ContainerTest {
                 contextConfiguration.bind(Component.class, NoAvailableConstruction.class);
 
                 NoAvailableConstructionException exception = assertThrows(
-                        NoAvailableConstructionException.class,
-                        () -> new Context(contextConfiguration));
+                    NoAvailableConstructionException.class,
+                    () -> new Context(contextConfiguration));
                 assertEquals(NoAvailableConstruction.class, exception.getInstanceType());
             }
 
@@ -119,7 +119,12 @@ public class ContainerTest {
 
             @Test
             void should_inject_super_class_field_dependencies() {
+                contextConfiguration.bind(Component.class, ComponentWIthSuperFieldDependency.class);
+                contextConfiguration.bind(Dependency.class, DependencyWithConstruction.class);
 
+                Context context = new Context(contextConfiguration);
+                Component component = context.get(Component.class).get();
+                assertEquals(DependencyWithConstruction.class, ((ComponentWIthSuperFieldDependency) component).dependency.getClass());
             }
 
             @Test
@@ -217,4 +222,7 @@ class NoAvailableConstruction implements Component {
 class ComponentWIthFieldDependency implements Component {
     @Inject
     Dependency dependency;
+}
+
+class ComponentWIthSuperFieldDependency extends ComponentWIthFieldDependency {
 }

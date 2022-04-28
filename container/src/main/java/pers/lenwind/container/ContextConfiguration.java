@@ -120,8 +120,14 @@ public class ContextConfiguration {
         }
 
         static List<Field> getFieldDependencies(Class<?> componentType) {
-            return Arrays.stream(componentType.getDeclaredFields())
-                .filter(field -> field.isAnnotationPresent(Inject.class)).toList();
+            List<Field> fields = new ArrayList<>();
+            Class<?> currentClass = componentType;
+            while (currentClass != Object.class) {
+                fields.addAll(Arrays.stream(currentClass.getDeclaredFields())
+                    .filter(field -> field.isAnnotationPresent(Inject.class)).toList());
+                currentClass = currentClass.getSuperclass();
+            }
+            return fields;
         }
     }
 }
