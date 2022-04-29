@@ -54,7 +54,7 @@ public class ContainerTest {
         }
 
         @Nested
-        class ComponentInjection {
+        class ConstructionInjection {
             @Test
             void should_inject_instance_with_default_construction() {
                 contextConfiguration.bind(Component.class, Instance.class);
@@ -108,7 +108,7 @@ public class ContainerTest {
         }
 
         @Nested
-        class FieldTest {
+        class FieldInjection {
             @Test
             void should_inject_field_dependencies() {
                 contextConfiguration.bind(Component.class, ComponentWithFieldDependency.class);
@@ -131,7 +131,7 @@ public class ContainerTest {
         }
 
         @Nested
-        class MethodTest {
+        class MethodInjection {
             @Test
             void should_inject_dependency_if_method_tag_annotation() {
                 Dependency dependency = new Dependency() {
@@ -143,6 +143,56 @@ public class ContainerTest {
                     (ComponentWithMethodInject) new Context(contextConfiguration).get(Component.class).get();
                 assertSame(dependency, component.dependency);
             }
+
+            static class SuperComponentWithMethodInject {
+                protected int superCount;
+
+                @Inject
+                void setSuperCount() {
+                    superCount++;
+                }
+            }
+
+            static class SubComponent extends SuperComponentWithMethodInject {
+            }
+
+
+            static class SubComponentWithMethodInject extends SuperComponentWithMethodInject {
+                int subCount;
+
+                @Inject
+                public void setSubCount() {
+                    this.subCount = superCount + 1;
+                }
+            }
+
+            @Test
+            void should_inject_super_method() {
+                contextConfiguration.bind(SubComponent.class, SubComponent.class);
+
+                SubComponent component = new Context(contextConfiguration).get(SubComponent.class).get();
+                assertEquals(1, component.superCount);
+            }
+
+            @Test
+            void should_inject_super_method_first_sub_method_second() {
+                contextConfiguration.bind(SubComponentWithMethodInject.class, SubComponentWithMethodInject.class);
+
+                Context context = new Context(contextConfiguration);
+                SubComponentWithMethodInject component = context.get(SubComponentWithMethodInject.class).get();
+                assertEquals(1, component.superCount);
+                assertEquals(2, component.subCount);
+            }
+
+            // override method
+            // 1. super inject, sub inject -> only sub
+            @Test
+            void should_only_inject_subclass_method_if_override_method_tag_annotation_both() {
+
+            }
+            // 3. super no inject, sub inject ->  sub
+            // 2. super inject, sub no inject -> no invoke
+
         }
     }
 

@@ -143,8 +143,15 @@ public class ContextConfiguration {
         }
 
         static List<Method> getInjectMethods(Class<?> componentType) {
-            return Arrays.stream(componentType.getDeclaredMethods())
-                .filter(method -> method.isAnnotationPresent(Inject.class)).toList();
+            Class<?> currentType = componentType;
+            List<Method> methods = new ArrayList<>();
+            while (currentType != Object.class) {
+                methods.addAll(Arrays.stream(currentType.getDeclaredMethods())
+                    .filter(method -> method.isAnnotationPresent(Inject.class)).toList());
+                currentType = currentType.getSuperclass();
+            }
+            Collections.reverse(methods);
+            return methods;
         }
     }
 }
