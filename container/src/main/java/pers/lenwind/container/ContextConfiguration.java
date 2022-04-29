@@ -147,7 +147,15 @@ public class ContextConfiguration {
             List<Method> methods = new ArrayList<>();
             while (currentType != Object.class) {
                 methods.addAll(Arrays.stream(currentType.getDeclaredMethods())
-                    .filter(method -> method.isAnnotationPresent(Inject.class)).toList());
+                    .filter(method -> method.isAnnotationPresent(Inject.class))
+                    .filter(method -> methods.stream()
+                        .noneMatch(sub -> Arrays.equals(sub.getParameterTypes(), method.getParameterTypes())
+                            && sub.getName().equals(method.getName())))
+                    .filter(method -> Arrays.stream(componentType.getDeclaredMethods())
+                        .filter(sub -> !sub.isAnnotationPresent(Inject.class))
+                        .noneMatch(sub -> Arrays.equals(sub.getParameterTypes(), method.getParameterTypes())
+                            && sub.getName().equals(method.getName())))
+                    .toList());
                 currentType = currentType.getSuperclass();
             }
             Collections.reverse(methods);

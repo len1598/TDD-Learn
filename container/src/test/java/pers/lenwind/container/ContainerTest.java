@@ -186,13 +186,36 @@ public class ContainerTest {
 
             // override method
             // 1. super inject, sub inject -> only sub
+            static class OverrideMethodInject extends SuperComponentWithMethodInject {
+                @Override
+                @Inject
+                void setSuperCount() {
+                    superCount = superCount + 2;
+                }
+            }
+
             @Test
             void should_only_inject_subclass_method_if_override_method_tag_annotation_both() {
+                contextConfiguration.bind(OverrideMethodInject.class, OverrideMethodInject.class);
 
+                OverrideMethodInject component = new Context(contextConfiguration).get(OverrideMethodInject.class).get();
+                assertEquals(2, component.superCount);
             }
-            // 3. super no inject, sub inject ->  sub
-            // 2. super inject, sub no inject -> no invoke
 
+            // 2. super inject, sub no inject -> no invoke
+            static class NoInjectComponent extends SuperComponentWithMethodInject {
+                @Override
+                void setSuperCount() {
+                    super.setSuperCount();
+                }
+            }
+            @Test
+            void should_not_inject_override_method_if_super_tag_annotation_but_sub_not_tag() {
+                contextConfiguration.bind(NoInjectComponent.class, NoInjectComponent.class);
+
+                NoInjectComponent component = new Context(contextConfiguration).get(NoInjectComponent.class).get();
+                assertEquals(0, component.superCount);
+            }
         }
     }
 
