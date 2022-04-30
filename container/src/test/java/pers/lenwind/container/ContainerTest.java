@@ -29,28 +29,8 @@ public class ContainerTest {
             };
             contextConfiguration.bind(Component.class, instance);
 
-            Component component = new Context(contextConfiguration).get(Component.class).get();
+            Component component = new Context(contextConfiguration.componentProviders).get(Component.class).get();
             assertSame(instance, component);
-        }
-
-        @Test
-        void should_throw_exception_if_dependency_not_found() {
-            contextConfiguration.bind(Component.class, InstanceWithInject.class);
-
-            DependencyNotFoundException exception = assertThrows(DependencyNotFoundException.class, () -> new Context(contextConfiguration));
-            assertEquals(InstanceWithInject.class, exception.getInstanceType());
-            assertEquals(Dependency.class, exception.getDependencyType());
-        }
-
-        @Test
-        void should_throw_exception_if_cyclic_transitive_dependency() {
-            contextConfiguration.bind(Component.class, InstanceWithInject.class);
-            contextConfiguration.bind(Dependency.class, DependencyWithAnotherDependency.class);
-            contextConfiguration.bind(AnotherDependency.class, DependencyWithBean.class);
-
-            CyclicDependencyException exception = assertThrows(CyclicDependencyException.class, () -> new Context(contextConfiguration));
-            Set<Class<?>> dependencies = Set.of(InstanceWithInject.class, DependencyWithAnotherDependency.class, DependencyWithBean.class);
-            assertTrue(exception.getDependencies().containsAll(dependencies));
         }
 
         @Nested
@@ -59,7 +39,7 @@ public class ContainerTest {
             void should_inject_instance_with_default_construction() {
                 contextConfiguration.bind(Component.class, Instance.class);
 
-                Component component = new Context(contextConfiguration).get(Component.class).get();
+                Component component = new Context(contextConfiguration.componentProviders).get(Component.class).get();
                 assertTrue(component instanceof Instance);
             }
 
@@ -69,7 +49,7 @@ public class ContainerTest {
                 contextConfiguration.bind(Dependency.class, dependency);
                 contextConfiguration.bind(Component.class, InstanceWithInject.class);
 
-                InstanceWithInject bean = (InstanceWithInject) new Context(contextConfiguration).get(Component.class).get();
+                InstanceWithInject bean = (InstanceWithInject) new Context(contextConfiguration.componentProviders).get(Component.class).get();
                 assertSame(dependency, bean.dependency);
             }
 
@@ -79,32 +59,46 @@ public class ContainerTest {
                 contextConfiguration.bind(String.class, "dependency");
                 contextConfiguration.bind(Component.class, InstanceWithInject.class);
 
-                InstanceWithInject bean = (InstanceWithInject) new Context(contextConfiguration).get(Component.class).get();
+                InstanceWithInject bean = (InstanceWithInject) new Context(contextConfiguration.componentProviders).get(Component.class).get();
                 assertNotNull(bean.dependency);
                 assertEquals("dependency", ((DependencyWithDependency) bean.dependency).dependency);
             }
 
             @Test
             void should_throw_exception_if_multi_inject_annotation() {
-                contextConfiguration.bind(Component.class, MultiInjectConstruction.class);
-
                 MultiInjectException exception = assertThrows(
                     MultiInjectException.class,
-                    () -> new Context(contextConfiguration));
+                    () -> contextConfiguration.bind(Component.class, MultiInjectConstruction.class));
                 assertEquals(MultiInjectConstruction.class, exception.getInstanceType());
             }
 
             @Test
             void should_throw_exception_if_no_inject_annotation_nor_default_construction() {
-                contextConfiguration.bind(Component.class, NoAvailableConstruction.class);
-
                 NoAvailableConstructionException exception = assertThrows(
                     NoAvailableConstructionException.class,
-                    () -> new Context(contextConfiguration));
+                    () -> contextConfiguration.bind(Component.class, NoAvailableConstruction.class));
                 assertEquals(NoAvailableConstruction.class, exception.getInstanceType());
             }
 
+            @Test
+            void should_throw_exception_if_dependency_not_found() {
+                contextConfiguration.bind(Component.class, InstanceWithInject.class);
 
+                DependencyNotFoundException exception = assertThrows(DependencyNotFoundException.class, () -> new Context(contextConfiguration.componentProviders));
+                assertEquals(InstanceWithInject.class, exception.getInstanceType());
+                assertEquals(Dependency.class, exception.getDependencyType());
+            }
+
+            @Test
+            void should_throw_exception_if_cyclic_transitive_dependency() {
+                contextConfiguration.bind(Component.class, InstanceWithInject.class);
+                contextConfiguration.bind(Dependency.class, DependencyWithAnotherDependency.class);
+                contextConfiguration.bind(AnotherDependency.class, DependencyWithBean.class);
+
+                CyclicDependencyException exception = assertThrows(CyclicDependencyException.class, () -> new Context(contextConfiguration.componentProviders));
+                Set<Class<?>> dependencies = Set.of(InstanceWithInject.class, DependencyWithAnotherDependency.class, DependencyWithBean.class);
+                assertTrue(exception.getDependencies().containsAll(dependencies));
+            }
         }
 
         @Nested
@@ -114,7 +108,7 @@ public class ContainerTest {
                 contextConfiguration.bind(Component.class, ComponentWithFieldDependency.class);
                 contextConfiguration.bind(Dependency.class, DependencyWithConstruction.class);
 
-                Context context = new Context(contextConfiguration);
+                Context context = new Context(contextConfiguration.componentProviders);
                 Component component = context.get(Component.class).get();
                 assertEquals(DependencyWithConstruction.class, ((ComponentWithFieldDependency) component).dependency.getClass());
             }
@@ -124,9 +118,20 @@ public class ContainerTest {
                 contextConfiguration.bind(Component.class, ComponentWithSuperFieldDependency.class);
                 contextConfiguration.bind(Dependency.class, DependencyWithConstruction.class);
 
-                Context context = new Context(contextConfiguration);
+                Context context = new Context(contextConfiguration.componentProviders);
                 Component component = context.get(Component.class).get();
                 assertEquals(DependencyWithConstruction.class, ((ComponentWithSuperFieldDependency) component).dependency.getClass());
+            }
+
+            static class ComponentWithFinalField implements Component {
+                @Inject
+                final Dependency dependency = null;
+            }
+
+
+            @Test
+            void should_inject_failed_if_final_field() {
+//                ContextConfiguration.ComponentProvider componentProvider = new ContextConfiguration.ComponentProvider(ComponentWithFinalField.class);
             }
         }
 
@@ -140,7 +145,7 @@ public class ContainerTest {
                 contextConfiguration.bind(Dependency.class, dependency);
 
                 ComponentWithMethodInject component =
-                    (ComponentWithMethodInject) new Context(contextConfiguration).get(Component.class).get();
+                    (ComponentWithMethodInject) new Context(contextConfiguration.componentProviders).get(Component.class).get();
                 assertSame(dependency, component.dependency);
             }
 
@@ -170,7 +175,7 @@ public class ContainerTest {
             void should_inject_super_method() {
                 contextConfiguration.bind(SubComponent.class, SubComponent.class);
 
-                SubComponent component = new Context(contextConfiguration).get(SubComponent.class).get();
+                SubComponent component = new Context(contextConfiguration.componentProviders).get(SubComponent.class).get();
                 assertEquals(1, component.superCount);
             }
 
@@ -178,14 +183,12 @@ public class ContainerTest {
             void should_inject_super_method_first_sub_method_second() {
                 contextConfiguration.bind(SubComponentWithMethodInject.class, SubComponentWithMethodInject.class);
 
-                Context context = new Context(contextConfiguration);
+                Context context = new Context(contextConfiguration.componentProviders);
                 SubComponentWithMethodInject component = context.get(SubComponentWithMethodInject.class).get();
                 assertEquals(1, component.superCount);
                 assertEquals(2, component.subCount);
             }
 
-            // override method
-            // 1. super inject, sub inject -> only sub
             static class OverrideMethodInject extends SuperComponentWithMethodInject {
                 @Override
                 @Inject
@@ -198,22 +201,22 @@ public class ContainerTest {
             void should_only_inject_subclass_method_if_override_method_tag_annotation_both() {
                 contextConfiguration.bind(OverrideMethodInject.class, OverrideMethodInject.class);
 
-                OverrideMethodInject component = new Context(contextConfiguration).get(OverrideMethodInject.class).get();
+                OverrideMethodInject component = new Context(contextConfiguration.componentProviders).get(OverrideMethodInject.class).get();
                 assertEquals(2, component.superCount);
             }
 
-            // 2. super inject, sub no inject -> no invoke
             static class NoInjectComponent extends SuperComponentWithMethodInject {
                 @Override
                 void setSuperCount() {
                     super.setSuperCount();
                 }
             }
+
             @Test
             void should_not_inject_override_method_if_super_tag_annotation_but_sub_not_tag() {
                 contextConfiguration.bind(NoInjectComponent.class, NoInjectComponent.class);
 
-                NoInjectComponent component = new Context(contextConfiguration).get(NoInjectComponent.class).get();
+                NoInjectComponent component = new Context(contextConfiguration.componentProviders).get(NoInjectComponent.class).get();
                 assertEquals(0, component.superCount);
             }
         }

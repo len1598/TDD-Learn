@@ -13,7 +13,7 @@ import java.lang.reflect.Method;
 import java.util.*;
 
 public class ContextConfiguration {
-    private final Map<Class<?>, Provider> componentProviders = new HashMap<>();
+    public final Map<Class<?>, Provider> componentProviders = new HashMap<>();
 
     public <T> void bind(Class<T> componentType, T instance) {
         componentProviders.put(componentType, () -> instance);
@@ -24,42 +24,22 @@ public class ContextConfiguration {
         componentProviders.put(componentType, new ComponentProvider(instanceType));
     }
 
-    public Map<Class<?>, Provider> initContainer() {
-        initDependencies();
-        checkDependencies();
-        return componentProviders;
-    }
-
-    private void checkDependencies() {
-        componentProviders.values().forEach(provider -> {
-            if (provider instanceof ComponentProvider componentProvider) {
-                componentProvider.checkDependencies(componentProvider, new Stack<>());
-            }
-        });
-    }
-
-    private void initDependencies() {
-        componentProviders.values().forEach(provider -> {
-            if (provider instanceof ComponentProvider componentProvider) {
-                componentProvider.initDependencies();
-            }
-        });
-    }
-
     public interface Provider {
         Object get();
     }
 
-    class ComponentProvider implements Provider {
-        Class<?> componentType;
+    public class ComponentProvider implements Provider {
+        private Class<?> componentType;
 
-        List<Class<?>> dependencies;
         private Constructor<?> constructor;
         private List<Field> injectFields;
         private List<Method> injectMethods;
 
-        ComponentProvider(Class<?> componentType) {
+        public ComponentProvider(Class<?> componentType) {
             this.componentType = componentType;
+            constructor = ComponentUtils.getConstructor(componentType);
+            injectFields = ComponentUtils.getInjectFields(componentType);
+            injectMethods = ComponentUtils.getInjectMethods(componentType);
         }
 
         @Override
@@ -85,22 +65,19 @@ public class ContextConfiguration {
             }
         }
 
-        public void initDependencies() {
-            constructor = ComponentUtils.getConstructor(componentType);
-            injectFields = ComponentUtils.getInjectFields(componentType);
-            injectMethods = ComponentUtils.getInjectMethods(componentType);
-            dependencies = CommonUtils.concatStream(
+        public List<Class<?>> getDependencies() {
+            return CommonUtils.concatStream(
                 Arrays.stream(constructor.getParameterTypes()),
                 injectFields.stream().map(Field::getType),
                 injectMethods.stream().flatMap(method1 -> Arrays.stream(method1.getParameterTypes()))).toList();
         }
 
-        private void checkDependencies(ComponentProvider provider, Stack<Class<?>> dependencyStack) {
+        public void checkDependencies(ComponentProvider provider, Stack<Class<?>> dependencyStack) {
             if (dependencyStack.contains(provider.componentType)) {
                 throw new CyclicDependencyException(dependencyStack.stream().toList());
             }
             dependencyStack.push(provider.componentType);
-            provider.dependencies.forEach(dependencyType -> {
+            provider.getDependencies().forEach(dependencyType -> {
                 Provider dependency = componentProviders.get(dependencyType);
                 if (dependency == null) {
                     throw new DependencyNotFoundException(provider.componentType, dependencyType);
