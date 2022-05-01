@@ -32,6 +32,19 @@ public class ContainerTest {
         }
 
         @Test
+        void should_throw_exception_while_not_instantiable() {
+            contextConfiguration.bind(Component.class, AbstractComponent.class);
+
+
+            assertThrows(BaseException.class,
+                () -> new Context(contextConfiguration.getComponentProviders()).get(Component.class));
+        }
+
+        static abstract class AbstractComponent implements Component {
+        }
+
+
+        @Test
         void should_get_empty_if_not_bind_to_context() {
             Optional<Component> component = new Context(contextConfiguration.getComponentProviders()).get(Component.class);
 
@@ -41,7 +54,7 @@ public class ContainerTest {
         @Nested
         class ConstructionInjection {
             @Test
-            void should_inject_instance_with_default_construction() {
+            void should_bind_instance_by_default_construction() {
                 contextConfiguration.bind(Component.class, Instance.class);
 
                 Component component = new Context(contextConfiguration.getComponentProviders()).get(Component.class).get();
@@ -49,7 +62,7 @@ public class ContainerTest {
             }
 
             @Test
-            void should_inject_instance_with_annotation_construction() {
+            void should_bind_instance_by_tag_inject_annotation_construction() {
                 Dependency dependency = new DependencyWithConstruction();
                 contextConfiguration.bind(Dependency.class, dependency);
                 contextConfiguration.bind(Component.class, InstanceWithInject.class);
@@ -133,11 +146,10 @@ public class ContainerTest {
                 final Dependency dependency = null;
             }
 
-
             @Test
-            void should_inject_failed_while_final_field() {
+            void should_throw_exception_while_inject_final_field() {
                 IllegalInjectionException exception = assertThrows(IllegalInjectionException.class, () -> new ComponentProvider<>(ComponentWithFinalField.class));
-                assertEquals(CommonUtils.getErrorMsg("field.inject.final"), exception.getMsg());
+                assertEquals(CommonUtils.getErrorMsg("inject.field.final"), exception.getMsg());
             }
         }
 
@@ -224,6 +236,17 @@ public class ContainerTest {
 
                 NoInjectComponent component = new Context(contextConfiguration.getComponentProviders()).get(NoInjectComponent.class).get();
                 assertEquals(0, component.superCount);
+            }
+
+            static class TypeParameterComponent {
+                @Inject
+                <T> void inject() {
+                }
+            }
+
+            @Test
+            void should_throw_exception_while_exist_type_parameters() {
+                assertThrows(IllegalInjectionException.class, () -> new ComponentProvider<>(TypeParameterComponent.class));
             }
         }
     }

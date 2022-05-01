@@ -1,6 +1,7 @@
 package pers.lenwind.container;
 
 import jakarta.inject.Inject;
+import pers.lenwind.container.exception.BaseException;
 import pers.lenwind.container.exception.IllegalInjectionException;
 import pers.lenwind.container.exception.MultiInjectException;
 import pers.lenwind.container.exception.NoAvailableConstructionException;
@@ -22,10 +23,13 @@ public class ComponentProvider<T> implements ContextConfiguration.Provider<T> {
         this.componentType = componentType;
         constructor = ComponentUtils.getConstructor(componentType);
         injectFields = ComponentUtils.getInjectFields(componentType);
-        if (injectFields.stream().anyMatch(field -> field.getModifiers() == Modifier.FINAL)) {
-            throw new IllegalInjectionException(componentType, CommonUtils.getErrorMsg("field.inject.final"));
+        if (injectFields.stream().anyMatch(field -> Modifier.isFinal(field.getModifiers()))) {
+            throw new IllegalInjectionException(componentType, "inject.field.final");
         }
         injectMethods = ComponentUtils.getInjectMethods(componentType);
+        if (injectMethods.stream().anyMatch(method -> method.getTypeParameters().length > 0)) {
+            throw new IllegalInjectionException(componentType, "inject.method.type-parameter");
+        }
     }
 
     @Override
@@ -47,7 +51,7 @@ public class ComponentProvider<T> implements ContextConfiguration.Provider<T> {
             }
             return instance;
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
-            throw new RuntimeException(e);
+            throw new BaseException(componentType, "instantiation.illegal", e);
         }
     }
 
@@ -85,15 +89,6 @@ public class ComponentProvider<T> implements ContextConfiguration.Provider<T> {
                 currentClass = currentClass.getSuperclass();
             }
             return fields;
-        }
-
-        static void checkInjectFields(List<Field> injectFields) {
-
-            for (Field f : injectFields) {
-                if (f.getModifiers() == Modifier.FINAL) {
-
-                }
-            }
         }
 
         static List<Method> getInjectMethods(Class<?> componentType) {
