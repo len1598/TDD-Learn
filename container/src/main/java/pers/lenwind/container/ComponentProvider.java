@@ -1,13 +1,11 @@
 package pers.lenwind.container;
 
 import jakarta.inject.Inject;
+import pers.lenwind.container.exception.IllegalInjectionException;
 import pers.lenwind.container.exception.MultiInjectException;
 import pers.lenwind.container.exception.NoAvailableConstructionException;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
+import java.lang.reflect.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -24,6 +22,9 @@ public class ComponentProvider<T> implements ContextConfiguration.Provider<T> {
         this.componentType = componentType;
         constructor = ComponentUtils.getConstructor(componentType);
         injectFields = ComponentUtils.getInjectFields(componentType);
+        if (injectFields.stream().anyMatch(field -> field.getModifiers() == Modifier.FINAL)) {
+            throw new IllegalInjectionException(componentType, CommonUtils.getErrorMsg("field.inject.final"));
+        }
         injectMethods = ComponentUtils.getInjectMethods(componentType);
     }
 
@@ -84,6 +85,15 @@ public class ComponentProvider<T> implements ContextConfiguration.Provider<T> {
                 currentClass = currentClass.getSuperclass();
             }
             return fields;
+        }
+
+        static void checkInjectFields(List<Field> injectFields) {
+
+            for (Field f : injectFields) {
+                if (f.getModifiers() == Modifier.FINAL) {
+
+                }
+            }
         }
 
         static List<Method> getInjectMethods(Class<?> componentType) {

@@ -4,10 +4,7 @@ import jakarta.inject.Inject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import pers.lenwind.container.exception.CyclicDependencyException;
-import pers.lenwind.container.exception.DependencyNotFoundException;
-import pers.lenwind.container.exception.MultiInjectException;
-import pers.lenwind.container.exception.NoAvailableConstructionException;
+import pers.lenwind.container.exception.*;
 
 import java.util.Optional;
 import java.util.Set;
@@ -138,8 +135,9 @@ public class ContainerTest {
 
 
             @Test
-            void should_inject_failed_if_final_field() {
-//                ContextConfiguration.ComponentProvider componentProvider = new ContextConfiguration.ComponentProvider(ComponentWithFinalField.class);
+            void should_inject_failed_while_final_field() {
+                IllegalInjectionException exception = assertThrows(IllegalInjectionException.class, () -> new ComponentProvider<>(ComponentWithFinalField.class));
+                assertEquals(CommonUtils.getErrorMsg("field.inject.final"), exception.getMsg());
             }
         }
 
