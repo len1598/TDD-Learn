@@ -2,19 +2,25 @@ package pers.lenwind.container;
 
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Named;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.ArgumentsSource;
+import org.junit.jupiter.params.provider.MethodSource;
+import pers.lenwind.container.exception.BaseException;
 import pers.lenwind.container.exception.IllegalInjectionException;
 import pers.lenwind.container.exception.MultiInjectException;
 import pers.lenwind.container.exception.NoAvailableConstructionException;
 
 import java.util.Optional;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-@Nested
 class InjectionTest {
     private Dependency dependency = new Dependency() {
     };
@@ -25,6 +31,14 @@ class InjectionTest {
     void setUp() {
         context = mock(Context.class);
         when(context.get(Dependency.class)).thenReturn(Optional.of(dependency));
+    }
+
+    @ParameterizedTest(name = "inject dependency to {0}")
+    @ArgumentsSource(ComponentTypeProvider.class)
+    void should_inject_dependency_to_component(Class<? extends Component> type) {
+        Component component = new ComponentProvider<>(type).get(context);
+
+        assertEquals(dependency, component.getDependency());
     }
 
     @Nested
@@ -41,20 +55,40 @@ class InjectionTest {
             assertSame(dependency, bean.dependency);
         }
 
-        @Test
-        void should_throw_exception_if_multi_inject_annotation() {
-            MultiInjectException exception = assertThrows(
-                MultiInjectException.class,
-                () -> new ComponentProvider<>(MultiInjectConstruction.class));
-            assertEquals(MultiInjectConstruction.class, exception.getInstanceType());
-        }
+        @Nested
+        class IllegalConstructionInjection {
 
-        @Test
-        void should_throw_exception_if_no_inject_annotation_nor_default_construction() {
-            NoAvailableConstructionException exception = assertThrows(
-                NoAvailableConstructionException.class,
-                () -> new ComponentProvider<>(NoAvailableConstruction.class));
-            assertEquals(NoAvailableConstruction.class, exception.getInstanceType());
+            @Test
+            void should_throw_exception_if_multi_inject_annotation() {
+                MultiInjectException exception = assertThrows(
+                    MultiInjectException.class,
+                    () -> new ComponentProvider<>(MultiInjectConstruction.class));
+                assertEquals(MultiInjectConstruction.class, exception.getInstanceType());
+            }
+
+            @Test
+            void should_throw_exception_if_no_inject_annotation_nor_default_construction() {
+                NoAvailableConstructionException exception = assertThrows(
+                    NoAvailableConstructionException.class,
+                    () -> new ComponentProvider<>(NoAvailableConstruction.class));
+                assertEquals(NoAvailableConstruction.class, exception.getInstanceType());
+            }
+
+            @ParameterizedTest(name = "{0} is not instantiable")
+            @MethodSource("notInstantiableType")
+            void should_throw_exception_while_not_instantiable(Class<?> type) {
+                assertThrows(BaseException.class,
+                    () -> new ComponentProvider<>(type).get(context));
+            }
+
+            static Stream<Arguments> notInstantiableType() {
+                return Stream.of(
+                    Arguments.of(Named.of("Abstract type", AbstractComponent.class)),
+                    Arguments.of(Named.of("Interface type", Component.class)));
+            }
+
+            static abstract class AbstractComponent implements Component {
+            }
         }
     }
 
@@ -130,7 +164,6 @@ class InjectionTest {
         }
 
 
-
         static class TypeParameterComponent {
 
             @Inject
@@ -142,7 +175,6 @@ class InjectionTest {
         void should_throw_exception_if_exist_type_parameters() {
             assertThrows(IllegalInjectionException.class, () -> new ComponentProvider<>(TypeParameterComponent.class));
         }
-
 
 
         @Nested
@@ -178,55 +210,56 @@ class InjectionTest {
 
         }
     }
-}
 
-class Instance implements Component {
-    public Instance() {
-    }
-}
-
-class InstanceWithInject implements Component {
-    Dependency dependency;
-
-    @Inject
-    public InstanceWithInject(Dependency dependency) {
-        this.dependency = dependency;
-    }
-}
-
-class MultiInjectConstruction implements Component {
-
-    String obj;
-
-    @Inject
-    public MultiInjectConstruction() {
+    static class Instance implements Component {
+        public Instance() {
+        }
     }
 
-    @Inject
-    public MultiInjectConstruction(String obj) {
-        this.obj = obj;
+    static class InstanceWithInject implements Component {
+        Dependency dependency;
+
+        @Inject
+        public InstanceWithInject(Dependency dependency) {
+            this.dependency = dependency;
+        }
     }
-}
 
+    static class MultiInjectConstruction implements Component {
 
-class NoAvailableConstruction implements Component {
-    private NoAvailableConstruction(String noDefault) {
+        String obj;
+
+        @Inject
+        public MultiInjectConstruction() {
+        }
+
+        @Inject
+        public MultiInjectConstruction(String obj) {
+            this.obj = obj;
+        }
     }
-}
 
-class ComponentWithFieldDependency implements Component {
-    @Inject
-    Dependency dependency;
-}
 
-class ComponentWithSuperFieldDependency extends ComponentWithFieldDependency {
-}
-
-class ComponentWithMethodInject implements Component {
-    Dependency dependency;
-
-    @Inject
-    public void setDependency(Dependency dependency) {
-        this.dependency = dependency;
+    static class NoAvailableConstruction implements Component {
+        private NoAvailableConstruction(String noDefault) {
+        }
     }
+
+    static class ComponentWithFieldDependency implements Component {
+        @Inject
+        Dependency dependency;
+    }
+
+    static class ComponentWithSuperFieldDependency extends ComponentWithFieldDependency {
+    }
+
+    static class ComponentWithMethodInject implements Component {
+        Dependency dependency;
+
+        @Inject
+        public void setDependency(Dependency dependency) {
+            this.dependency = dependency;
+        }
+    }
+
 }

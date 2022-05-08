@@ -51,7 +51,7 @@ public class ComponentProvider<T> implements ContextConfiguration.Provider<T> {
             }
             return instance;
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
-            throw new BaseException(componentType, "instantiation.illegal", e);
+            throw new RuntimeException(e);
         }
     }
 
@@ -65,6 +65,9 @@ public class ComponentProvider<T> implements ContextConfiguration.Provider<T> {
 
     static class ComponentUtils {
         static <T> Constructor<T> getConstructor(Class<T> implementation) {
+            if (Modifier.isAbstract(implementation.getModifiers()) || Modifier.isInterface(implementation.getModifiers())) {
+                throw new BaseException(implementation, "instantiation.illegal");
+            }
             List<Constructor<?>> constructors = Arrays.stream(implementation.getConstructors())
                 .filter(constructor -> constructor.isAnnotationPresent(Inject.class)).toList();
             if (constructors.size() > 1) {
