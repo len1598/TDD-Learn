@@ -3,11 +3,13 @@ package pers.lenwind.container.exception;
 import lombok.ToString;
 import pers.lenwind.container.CommonUtils;
 
+import java.lang.reflect.Type;
+
 @ToString
 public class BaseException extends RuntimeException {
-    protected Class<?> instanceType;
+    protected Type instanceType;
 
-    public BaseException(Class<?> instanceType) {
+    public BaseException(Type instanceType) {
         this.instanceType = instanceType;
     }
 
@@ -20,7 +22,7 @@ public class BaseException extends RuntimeException {
         this.instanceType = instanceType;
     }
 
-    public Class<?> getInstanceType() {
+    public Type getInstanceType() {
         return instanceType;
     }
 }

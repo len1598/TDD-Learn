@@ -15,17 +15,26 @@ import java.util.function.BiFunction;
 import java.util.stream.Stream;
 
 public class ComponentProvider<T> implements ContextConfiguration.Provider<T> {
-    final Class<T> componentType;
+    final Type componentType;
 
-    private final Constructor<T> constructor;
-    private final List<Field> injectFields;
-    private final List<Method> injectMethods;
+    private Constructor<T> constructor;
+    private List<Field> injectFields;
+    private List<Method> injectMethods;
 
     public ComponentProvider(Class<T> componentType) {
         this.componentType = componentType;
-        constructor = getConstructor(componentType);
-        injectFields = getInjectFields(componentType);
-        injectMethods = getInjectMethods(componentType);
+        init(componentType);
+    }
+
+    public ComponentProvider(ParameterizedType componentType) {
+        this.componentType = componentType;
+        init((Class) componentType.getActualTypeArguments()[0]);
+    }
+
+    private void init(Class<T> clazz) {
+        constructor = getConstructor(clazz);
+        injectFields = getInjectFields(clazz);
+        injectMethods = getInjectMethods(clazz);
     }
 
     @Override

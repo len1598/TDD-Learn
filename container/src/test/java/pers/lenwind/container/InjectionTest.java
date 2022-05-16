@@ -14,6 +14,7 @@ import pers.lenwind.container.exception.IllegalInjectionException;
 import pers.lenwind.container.exception.MultiInjectException;
 import pers.lenwind.container.exception.NoAvailableConstructionException;
 
+import java.lang.reflect.ParameterizedType;
 import java.util.Optional;
 import java.util.stream.Stream;
 
@@ -41,6 +42,12 @@ class InjectionTest {
         assertEquals(dependency, component.getDependency());
     }
 
+    void should_inject_dependency_to_provider_type(Class<? extends Component> type) {
+        // TODO inject construction dependency
+        // TODO inject field dependency
+        // TODO inject method dependency
+    }
+
     @Nested
     class ConstructionInjection {
         @Test
@@ -53,6 +60,15 @@ class InjectionTest {
         void should_inject_instance_by_tag_annotation_construction_with_dependency() {
             InstanceWithInject bean = new ComponentProvider<>(InstanceWithInject.class).get(context);
             assertSame(dependency, bean.dependency);
+        }
+
+        @Test
+        void should_inject_construction_dependency_in_provider_type() {
+            Literal<ComponentProvider<InstanceWithInject>> literal = new Literal<>() {
+            };
+            ParameterizedType type = literal.getType();
+            InstanceWithInject provider = (InstanceWithInject) new ComponentProvider<>(type).get(context);
+            assertEquals(dependency, provider.dependency);
         }
 
         @Nested
@@ -104,6 +120,15 @@ class InjectionTest {
         void should_inject_super_class_field_dependencies() {
             ComponentWithSuperFieldDependency component = new ComponentProvider<>(ComponentWithSuperFieldDependency.class).get(context);
             assertSame(dependency, component.dependency);
+        }
+
+        @Test
+        void should_inject_field_dependency_in_provider_type() {
+            Literal<ComponentProvider<ComponentWithFieldDependency>> literal = new Literal<>() {
+            };
+            ParameterizedType type = literal.getType();
+            ComponentWithFieldDependency provider = (ComponentWithFieldDependency) new ComponentProvider<>(type).get(context);
+            assertEquals(dependency, provider.dependency);
         }
 
         static class ComponentWithFinalField implements Component {
@@ -169,6 +194,15 @@ class InjectionTest {
             @Inject
             <T> void inject() {
             }
+        }
+
+        @Test
+        void should_inject_method_dependency_in_provider_type() {
+            Literal<ComponentProvider<ComponentWithMethodInject>> literal = new Literal<>() {
+            };
+            ParameterizedType type = literal.getType();
+            ComponentWithMethodInject provider = (ComponentWithMethodInject) new ComponentProvider<>(type).get(context);
+            assertEquals(dependency, provider.dependency);
         }
 
         @Test

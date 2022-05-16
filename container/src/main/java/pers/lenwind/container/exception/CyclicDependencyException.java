@@ -2,17 +2,18 @@ package pers.lenwind.container.exception;
 
 import lombok.ToString;
 
+import java.lang.reflect.Type;
 import java.util.List;
 
 @ToString
 public class CyclicDependencyException extends RuntimeException {
-    private final List<Class<?>> dependencies;
+    private final List<Type> dependencies;
 
-    public CyclicDependencyException(List<Class<?>> classes) {
+    public CyclicDependencyException(List<Type> classes) {
         dependencies = classes;
     }
 
-    public List<Class<?>> getDependencies() {
+    public List<Type> getDependencies() {
         return dependencies;
     }
 }

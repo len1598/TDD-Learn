@@ -6,6 +6,7 @@ import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.ArgumentsProvider;
 
+import java.lang.reflect.ParameterizedType;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.params.provider.Arguments.arguments;
@@ -65,6 +66,12 @@ public class ComponentTypeProvider implements ArgumentsProvider {
             return dependency;
         }
 
+    }
+}
+
+abstract class Literal<T> {
+    ParameterizedType getType() {
+        return (ParameterizedType) ((ParameterizedType) getClass().getGenericSuperclass()).getActualTypeArguments()[0];
     }
 }
 

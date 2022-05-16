@@ -1,10 +1,12 @@
 package pers.lenwind.container;
 
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.HashMap;
 import java.util.Map;
 
 public class ContextConfiguration {
-    private final Map<Class<?>, Provider<?>> componentProviders = new HashMap<>();
+    private final Map<Type, Provider<?>> componentProviders = new HashMap<>();
 
     public <T> void bind(Class<T> componentType, T instance) {
         componentProviders.put(componentType, context -> instance);
@@ -15,7 +17,11 @@ public class ContextConfiguration {
         componentProviders.put(componentType, new ComponentProvider<>(instanceType));
     }
 
-    public Map<Class<?>, Provider<?>> getComponentProviders() {
+    public void bind(ParameterizedType type, ComponentProvider<?> componentComponentProvider) {
+        componentProviders.put(type, componentComponentProvider);
+    }
+
+    public Map<Type, Provider<?>> getComponentProviders() {
         return componentProviders;
     }
 

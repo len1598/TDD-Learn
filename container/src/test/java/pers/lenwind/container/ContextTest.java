@@ -9,6 +9,7 @@ import org.junit.jupiter.params.provider.ArgumentsSource;
 import pers.lenwind.container.exception.CyclicDependencyException;
 import pers.lenwind.container.exception.DependencyNotFoundException;
 
+import java.lang.reflect.ParameterizedType;
 import java.util.Optional;
 import java.util.Set;
 
@@ -31,6 +32,23 @@ public class ContextTest {
         Component component = new Context(contextConfiguration.getComponentProviders()).get(Component.class).get();
         assertSame(instance, component);
     }
+
+    static class Instance implements Component {
+    }
+
+    @Test
+    void should_bind_provider_type_to_context() {
+        ParameterizedType type = new Literal<ComponentProvider<Component>>() {
+        }.getType();
+
+        ComponentProvider<Instance> provider = new ComponentProvider<>(Instance.class);
+        contextConfiguration.bind(type, provider);
+
+        ContextConfiguration.Provider<?> componentProvider = new Context(contextConfiguration.getComponentProviders()).get(type).get();
+        assertSame(provider, componentProvider);
+    }
+
+
 
     @Test
     void should_return_empty_if_not_bind_to_context() {

@@ -3,14 +3,16 @@ package pers.lenwind.container;
 import pers.lenwind.container.exception.CyclicDependencyException;
 import pers.lenwind.container.exception.DependencyNotFoundException;
 
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Stack;
 
 public class Context {
-    private Map<Class<?>, ContextConfiguration.Provider<?>> container;
+    private Map<Type, ContextConfiguration.Provider<?>> container;
 
-    public Context(Map<Class<?>, ContextConfiguration.Provider<?>> componentProviders) {
+    public Context(Map<Type, ContextConfiguration.Provider<?>> componentProviders) {
         container = componentProviders;
         componentProviders.values().forEach(provider -> {
             if (provider instanceof ComponentProvider<?> componentProvider) {
@@ -23,7 +25,7 @@ public class Context {
         return Optional.ofNullable(container.get(type)).map(provider -> (T) provider.get(this));
     }
 
-    private void checkDependencies(ComponentProvider<?> provider, Stack<Class<?>> dependencyStack) {
+    private void checkDependencies(ComponentProvider<?> provider, Stack<Type> dependencyStack) {
         if (dependencyStack.contains(provider.componentType)) {
             throw new CyclicDependencyException(dependencyStack.stream().toList());
         }
@@ -38,5 +40,9 @@ public class Context {
             }
         });
         dependencyStack.pop();
+    }
+
+    public Optional<ContextConfiguration.Provider<?>> get(ParameterizedType type) {
+        return Optional.ofNullable(container.get(type));
     }
 }
