@@ -2,6 +2,7 @@ package pers.lenwind.args;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import pers.lenwind.args.exception.MultiArgsException;
 import pers.lenwind.args.exception.ParseException;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -41,7 +42,7 @@ public class ArgsTest {
 
         @Test
         void should_throw_exception_while_boolean_flag_contain_parameter() {
-            assertThrows(ParseException.class, () -> Args.parse(BooleanOption.class, "-l", "f"));
+            assertThrows(MultiArgsException.class, () -> Args.parse(BooleanOption.class, "-l", "f"));
         }
 
         @Test
@@ -54,13 +55,13 @@ public class ArgsTest {
 
         @Test
         void should_throw_exception_while_integer_flag_contain_multi_parameters() {
-            assertThrows(ParseException.class, () -> Args.parse(IntegerOption.class, "-p", "8080", "8081"));
+            assertThrows(MultiArgsException.class, () -> Args.parse(IntegerOption.class, "-p", "8080", "8081"));
         }
 
 
         @Test
         void should_throw_exception_while_string_flag_contain_multi_parameters() {
-            assertThrows(ParseException.class, () -> Args.parse(StringOption.class, "-d", "/usr/logs", "/usr/vars"));
+            assertThrows(MultiArgsException.class, () -> Args.parse(StringOption.class, "-d", "/usr/logs", "/usr/vars"));
         }
 
         @Test
