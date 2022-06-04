@@ -1,19 +1,23 @@
 package pers.lenwind.args;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.IntStream;
 
-sealed interface ParseOption<T> permits ParseBooleanOption, ParseIntOption, ParseStringOption {
-    default int getOptionLength(int index, List<String> args) {
+public abstract class ParseOption<T> {
+    public abstract T parse(List<String> args, Option option);
+
+    protected Optional<List<String>> values(List<String> args, Option option) {
+        int index = args.indexOf(option.value());
         if (index == -1) {
-            return 0;
+            return Optional.empty();
         }
-        for (int i = index + 1; i < args.size(); i++) {
-            if (args.get(i).startsWith("-")) {
-                return i - index;
-            }
-        }
-        return args.size() - index;
+        return Optional.of(args.subList(index + 1, getFlowingFlagIndex(index, args)));
     }
 
-    T parse(List<String> args, Option option);
+    private int getFlowingFlagIndex(int index, List<String> args) {
+        return IntStream.range(index + 1, args.size())
+            .filter(i -> args.get(i).matches("-[dglp]"))
+            .findFirst().orElse(args.size());
+    }
 }

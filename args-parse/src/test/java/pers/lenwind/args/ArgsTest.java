@@ -1,6 +1,5 @@
 package pers.lenwind.args;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import pers.lenwind.args.exception.ParseException;
@@ -84,10 +83,6 @@ public class ArgsTest {
         }
     }
 
-
-    // multi options
-    // -l -p 8080 -d /usr/logs
-
     @Test
     void should_parse_multi_args() {
         Options options = Args.parse(Options.class, "-l -p 8080 -d /usr/logs".split(" "));
@@ -97,22 +92,35 @@ public class ArgsTest {
         assertEquals("/usr/logs", options.directory());
     }
 
-    // -g this is a list -d 1 2 -3 5
-    // TODO -g this is a list
-    // TODO -d 1 2 -3 5
-
     static record Options(@Option("-l") boolean logging, @Option("-p") int port, @Option("-d") String directory) {
     }
 
     @Test
-    @Disabled
+    void should_parse_string_group() {
+        GroupOption groupOption = Args.parse(GroupOption.class, "-g this is a list".split(" "));
+        assertArrayEquals(new String[]{"this", "is", "a", "list"}, groupOption.group());
+    }
+
+    static record GroupOption(@Option("-g") String[] group) {
+    }
+
+    @Test
+    void should_parse_decimals_args() {
+        DecimalsOptions listOptions = Args.parse(DecimalsOptions.class, "-d 1 2 -3 5".split(" "));
+        assertArrayEquals(new int[]{1, 2, -3, 5}, listOptions.decimals());
+    }
+
+    static record DecimalsOptions(@Option("-d") int[] decimals) {
+    }
+
+    @Test
     void should_parse_list_args() {
         ListOptions listOptions = Args.parse(ListOptions.class, "-g this is a list -d 1 2 -3 5".split(" "));
         assertArrayEquals(new String[]{"this", "is", "a", "list"}, listOptions.group());
         assertArrayEquals(new int[]{1, 2, -3, 5}, listOptions.decimals());
     }
 
-    static record ListOptions(@Option("g") String[] group, @Option("d") int[] decimals) {
+    static record ListOptions(@Option("-g") String[] group, @Option("-d") int[] decimals) {
     }
 }
 
