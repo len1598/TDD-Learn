@@ -79,6 +79,10 @@ interface Component {
     default Dependency getDependency() {
         return null;
     }
+
+    default ContextConfiguration.Provider<Dependency> getDependencyProvider() {
+        return null;
+    }
 }
 
 interface Dependency {

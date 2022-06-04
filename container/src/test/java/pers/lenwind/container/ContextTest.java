@@ -29,7 +29,7 @@ public class ContextTest {
         };
         contextConfiguration.bind(Component.class, instance);
 
-        Component component = new Context(contextConfiguration.getComponentProviders()).get(Component.class).get();
+        Component component = (Component) new Context(contextConfiguration.getComponentProviders()).get(Component.class).get();
         assertSame(instance, component);
     }
 
@@ -44,7 +44,7 @@ public class ContextTest {
         ComponentProvider<Instance> provider = new ComponentProvider<>(Instance.class);
         contextConfiguration.bind(type, provider);
 
-        ContextConfiguration.Provider<?> componentProvider = new Context(contextConfiguration.getComponentProviders()).get(type).get();
+        ContextConfiguration.Provider<?> componentProvider = (ContextConfiguration.Provider<?>) new Context(contextConfiguration.getComponentProviders()).get(type).get();
         assertSame(provider, componentProvider);
     }
 

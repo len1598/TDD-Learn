@@ -19,19 +19,24 @@ import java.util.Optional;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class InjectionTest {
-    private Dependency dependency = new Dependency() {
-    };
+    private Dependency dependency = mock(Dependency.class);
 
-    private Context context;
+    private ContextConfiguration.Provider<Dependency> dependencyProvider = mock(ContextConfiguration.Provider.class);
+
+    private Context context = mock(Context.class);
+
+    private ParameterizedType dependencyProviderType;
 
     @BeforeEach
-    void setUp() {
-        context = mock(Context.class);
-        when(context.get(Dependency.class)).thenReturn(Optional.of(dependency));
+    void setUp() throws NoSuchFieldException {
+        dependencyProviderType = (ParameterizedType) InjectionTest.class.getDeclaredField("dependencyProvider").getGenericType();
+        when(context.get(eq(Dependency.class))).thenReturn(Optional.of(dependency));
+        when(context.get(eq(dependencyProviderType))).thenReturn(Optional.of(dependencyProvider));
     }
 
     @ParameterizedTest(name = "inject dependency to {0}")
@@ -42,10 +47,56 @@ class InjectionTest {
         assertEquals(dependency, component.getDependency());
     }
 
-    void should_inject_dependency_to_provider_type(Class<? extends Component> type) {
-        // TODO inject construction dependency
-        // TODO inject field dependency
-        // TODO inject method dependency
+    @ParameterizedTest(name = "inject provider dependency to {0}")
+    @MethodSource("providerDependencies")
+    void should_inject_provider_dependency_to_component(Class<? extends Component> type) {
+        Component component = new ComponentProvider<>(type).get(context);
+
+        assertEquals(dependencyProvider, component.getDependencyProvider());
+    }
+
+    static Stream<Arguments> providerDependencies() {
+        return Stream.of(Arguments.of(Named.of("construction type", ConstructionDependencyProvider.class)),
+            Arguments.of(Named.of("field type", FieldDependencyProvider.class)),
+            Arguments.of(Named.of("method type", MethodDependencyProvider.class)));
+    }
+
+    static class ConstructionDependencyProvider implements Component {
+        private ContextConfiguration.Provider<Dependency> dependencyProvider;
+
+        @Inject
+        public ConstructionDependencyProvider(ContextConfiguration.Provider<Dependency> dependencyProvider) {
+            this.dependencyProvider = dependencyProvider;
+        }
+
+        @Override
+        public ContextConfiguration.Provider<Dependency> getDependencyProvider() {
+            return dependencyProvider;
+        }
+    }
+
+    static class FieldDependencyProvider implements Component {
+        @Inject
+        private ContextConfiguration.Provider<Dependency> dependencyProvider;
+
+        @Override
+        public ContextConfiguration.Provider<Dependency> getDependencyProvider() {
+            return dependencyProvider;
+        }
+    }
+
+    static class MethodDependencyProvider implements Component {
+        private ContextConfiguration.Provider<Dependency> dependencyProvider;
+
+        @Inject
+        public void setDependencyProvider(ContextConfiguration.Provider<Dependency> dependencyProvider) {
+            this.dependencyProvider = dependencyProvider;
+        }
+
+        @Override
+        public ContextConfiguration.Provider<Dependency> getDependencyProvider() {
+            return dependencyProvider;
+        }
     }
 
     @Nested
@@ -123,7 +174,7 @@ class InjectionTest {
         }
 
         @Test
-        void should_inject_field_dependency_in_provider_type() {
+        void should_inject_field_provider_dependency() {
             Literal<ComponentProvider<ComponentWithFieldDependency>> literal = new Literal<>() {
             };
             ParameterizedType type = literal.getType();

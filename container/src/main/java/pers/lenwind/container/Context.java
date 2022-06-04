@@ -21,14 +21,28 @@ public class Context {
         });
     }
 
-    public <T> Optional<T> get(Class<T> type) {
+    public Optional get(Type type) {
+        if (type instanceof ParameterizedType parameterizedType) {
+            return getType(parameterizedType);
+        } else if (type instanceof Class clazz) {
+            return getType(clazz);
+        }
+        return Optional.empty();
+    }
+
+    private <T> Optional<T> getType(Class<T> type) {
         return Optional.ofNullable(container.get(type)).map(provider -> (T) provider.get(this));
+    }
+
+    private Optional<ContextConfiguration.Provider<?>> getType(ParameterizedType type) {
+        return Optional.ofNullable(container.get(type));
     }
 
     private void checkDependencies(ComponentProvider<?> provider, Stack<Type> dependencyStack) {
         if (dependencyStack.contains(provider.componentType)) {
             throw new CyclicDependencyException(dependencyStack.stream().toList());
         }
+        this.getClass().isAssignableFrom()
         dependencyStack.push(provider.componentType);
         provider.getDependencies().forEach(dependencyType -> {
             ContextConfiguration.Provider<?> dependency = container.get(dependencyType);
@@ -40,9 +54,5 @@ public class Context {
             }
         });
         dependencyStack.pop();
-    }
-
-    public Optional<ContextConfiguration.Provider<?>> get(ParameterizedType type) {
-        return Optional.ofNullable(container.get(type));
     }
 }
