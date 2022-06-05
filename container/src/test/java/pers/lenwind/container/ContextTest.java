@@ -86,9 +86,10 @@ public class ContextTest {
             assertTrue(exception.getDependencies().containsAll(dependencies));
         }
 
-        @Test
-        void should_not_throw_exception_if_cyclic_dependency_in_provider_type() {
-            contextConfiguration.bind(Component.class, ComponentTypeProvider.ConstructionDependency.class);
+        @ParameterizedTest(name = "Cyclic {0}")
+        @MethodSource("pers.lenwind.container.ComponentTypeProvider#providerDependencies")
+        void should_not_throw_exception_if_cyclic_dependency_in_provider_type(Class<? extends Component> type) {
+            contextConfiguration.bind(Component.class, type);
             contextConfiguration.bind(Dependency.class, DependencyWithComponentProvider.class);
 
             assertDoesNotThrow(() -> new Context(contextConfiguration.getComponentProviders()));

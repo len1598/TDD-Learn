@@ -10,7 +10,7 @@ import java.util.Map;
 public class ContextConfiguration {
     private final Map<Type, Provider<?>> componentProviders = new HashMap<>();
 
-    public <T> void bind(Class<T> componentType, T instance) {
+    public <Type> void bind(Class<Type> componentType, Type instance) {
         componentProviders.put(componentType, context -> instance);
     }
 

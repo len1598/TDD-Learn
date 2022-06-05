@@ -38,7 +38,7 @@ class InjectionTest {
         when(context.get(eq(dependencyProviderType))).thenReturn(Optional.of(dependencyProvider));
     }
 
-    @ParameterizedTest(name = "inject dependency to {0}")
+    @ParameterizedTest(name = "inject {0}")
     @MethodSource("pers.lenwind.container.ComponentTypeProvider#instanceDependencies")
     void should_inject_dependency_to_component(Class<? extends Component> type) {
         Component component = new ComponentProvider<>(type).get(context);
@@ -46,7 +46,7 @@ class InjectionTest {
         assertEquals(dependency, component.getDependency());
     }
 
-    @ParameterizedTest(name = "inject provider dependency to {0}")
+    @ParameterizedTest(name = "inject {0}")
     @MethodSource("pers.lenwind.container.ComponentTypeProvider#providerDependencies")
     void should_inject_provider_dependency_to_component(Class<? extends Component> type) {
         Component component = new ComponentProvider<>(type).get(context);
@@ -57,7 +57,7 @@ class InjectionTest {
     @Nested
     class ConstructionInjection {
         @Test
-        void should_inject_instance_by_default_construction() {
+        void should_initialize_instance_by_default_construction() {
             Component component = new ComponentProvider<>(Instance.class).get(context);
             assertNotNull(component);
         }
@@ -66,15 +66,6 @@ class InjectionTest {
         void should_inject_instance_by_tag_annotation_construction_with_dependency() {
             InstanceWithInject bean = new ComponentProvider<>(InstanceWithInject.class).get(context);
             assertSame(dependency, bean.dependency);
-        }
-
-        @Test
-        void should_inject_construction_dependency_in_provider_type() {
-            Literal<ComponentProvider<InstanceWithInject>> literal = new Literal<>() {
-            };
-            ParameterizedType type = literal.getType();
-            InstanceWithInject provider = (InstanceWithInject) new ComponentProvider<>(type).get(context);
-            assertEquals(dependency, provider.dependency);
         }
 
         @Nested
@@ -89,7 +80,7 @@ class InjectionTest {
             }
 
             @Test
-            void should_throw_exception_if_no_inject_annotation_nor_default_construction() {
+            void should_throw_exception_if_not_inject_annotation_nor_default_construction() {
                 NoAvailableConstructionException exception = assertThrows(
                     NoAvailableConstructionException.class,
                     () -> new ComponentProvider<>(NoAvailableConstruction.class));
@@ -117,24 +108,15 @@ class InjectionTest {
     @Nested
     class FieldInjection {
         @Test
-        void should_inject_field_dependencies() {
+        void should_inject_field_dependencies_if_tag_annotation() {
             ComponentWithFieldDependency component = new ComponentProvider<>(ComponentWithFieldDependency.class).get(context);
             assertSame(dependency, component.dependency);
         }
 
         @Test
-        void should_inject_super_class_field_dependencies() {
+        void should_inject_super_class_field_dependencies_if_tag_annotation() {
             ComponentWithSuperFieldDependency component = new ComponentProvider<>(ComponentWithSuperFieldDependency.class).get(context);
             assertSame(dependency, component.dependency);
-        }
-
-        @Test
-        void should_inject_field_provider_dependency() {
-            Literal<ComponentProvider<ComponentWithFieldDependency>> literal = new Literal<>() {
-            };
-            ParameterizedType type = literal.getType();
-            ComponentWithFieldDependency provider = (ComponentWithFieldDependency) new ComponentProvider<>(type).get(context);
-            assertEquals(dependency, provider.dependency);
         }
 
         static class ComponentWithFinalField implements Component {
@@ -143,7 +125,7 @@ class InjectionTest {
         }
 
         @Test
-        void should_throw_exception_if_inject_final_field() {
+        void should_throw_exception_while_inject_final_field() {
             IllegalInjectionException exception = assertThrows(IllegalInjectionException.class, () -> new ComponentProvider<>(FieldInjection.ComponentWithFinalField.class));
             assertEquals(CommonUtils.getErrorMsg("inject.field.final"), exception.getMsg());
         }
@@ -152,7 +134,7 @@ class InjectionTest {
     @Nested
     class MethodInjection {
         @Test
-        void should_invoke_methods_if_method_tag_annotation_with_dependency() {
+        void should_invoke_methods_if_method_tag_annotation() {
             ComponentWithMethodInject component =
                 new ComponentProvider<>(ComponentWithMethodInject.class).get(context);
             assertSame(dependency, component.dependency);
@@ -181,7 +163,7 @@ class InjectionTest {
         }
 
         @Test
-        void should_invoke_super_methods_if_tag_annotation() {
+        void should_invoke_super_method_if_tag_annotation() {
             SubComponent component = new ComponentProvider<>(SubComponent.class).get(context);
             assertEquals(1, component.superCount);
         }
@@ -200,15 +182,6 @@ class InjectionTest {
             @Inject
             <T> void inject() {
             }
-        }
-
-        @Test
-        void should_inject_method_dependency_in_provider_type() {
-            Literal<ComponentProvider<ComponentWithMethodInject>> literal = new Literal<>() {
-            };
-            ParameterizedType type = literal.getType();
-            ComponentWithMethodInject provider = (ComponentWithMethodInject) new ComponentProvider<>(type).get(context);
-            assertEquals(dependency, provider.dependency);
         }
 
         @Test

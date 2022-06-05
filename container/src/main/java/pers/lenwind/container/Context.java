@@ -53,10 +53,10 @@ public class Context {
             if (dependency == null) {
                 throw new DependencyNotFoundException(componentType, dependencyClazz);
             }
+            if (dependencyType instanceof ParameterizedType) {
+                return;
+            }
             if (dependency instanceof ComponentProvider<?> componentProvider) {
-                if (dependencyType instanceof ParameterizedType) {
-                    return;
-                }
                 checkDependencies(componentProvider, dependencyStack);
             }
         });
