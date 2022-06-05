@@ -14,13 +14,13 @@ import java.util.List;
 import java.util.function.BiFunction;
 import java.util.stream.Stream;
 
-public class ComponentProvider<T> implements ContextConfiguration.Provider<T> {
-    final Type componentType;
+public class ComponentProvider<T> implements Provider<T> {
+    final private Type componentType;
 
     private Constructor<T> constructor;
+
     private List<Field> injectFields;
     private List<Method> injectMethods;
-
     public ComponentProvider(Class<T> componentType) {
         this.componentType = componentType;
         init(componentType);
@@ -29,6 +29,10 @@ public class ComponentProvider<T> implements ContextConfiguration.Provider<T> {
     public ComponentProvider(ParameterizedType componentType) {
         this.componentType = componentType;
         init((Class) componentType.getActualTypeArguments()[0]);
+    }
+
+    public Type getComponentType() {
+        return componentType;
     }
 
     private void init(Class<T> clazz) {
@@ -42,7 +46,8 @@ public class ComponentProvider<T> implements ContextConfiguration.Provider<T> {
         try {
             T instance = constructor.newInstance(toDependencies(context, constructor));
             for (Field field : injectFields) {
-                field.set(instance, context.get(field.getType()).get());
+                field.setAccessible(true);
+                field.set(instance, context.get(field.getGenericType()).get());
             }
             for (Method method : injectMethods) {
                 method.invoke(instance, toDependencies(context, method));
@@ -53,15 +58,15 @@ public class ComponentProvider<T> implements ContextConfiguration.Provider<T> {
         }
     }
 
-    public List<Class<?>> getDependencies() {
+    public List<Type> getDependencies() {
         return CommonUtils.concatStreamToList(
-            Arrays.stream(constructor.getParameterTypes()),
-            injectFields.stream().map(Field::getType),
-            injectMethods.stream().flatMap(method1 -> Arrays.stream(method1.getParameterTypes())));
+            Arrays.stream(constructor.getGenericParameterTypes()),
+            injectFields.stream().map(Field::getGenericType),
+            injectMethods.stream().flatMap(method1 -> Arrays.stream(method1.getGenericParameterTypes())));
     }
 
     private static Object[] toDependencies(Context context, Executable executable) {
-        return Arrays.stream(executable.getParameterTypes())
+        return Arrays.stream(executable.getGenericParameterTypes())
             .map(type -> context.get(type).get()).toArray();
     }
 

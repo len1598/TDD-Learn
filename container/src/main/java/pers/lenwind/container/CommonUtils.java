@@ -5,7 +5,6 @@ import java.util.ResourceBundle;
 import java.util.stream.Stream;
 
 public class CommonUtils {
-
     private static final ResourceBundle bundle = ResourceBundle.getBundle("error-message");
 
     public static <T> List<T> concatStreamToList(Stream<T>... streams) {

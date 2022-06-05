@@ -10,9 +10,9 @@ import java.util.Optional;
 import java.util.Stack;
 
 public class Context {
-    private Map<Type, ContextConfiguration.Provider<?>> container;
+    private Map<Type, Provider<?>> container;
 
-    public Context(Map<Type, ContextConfiguration.Provider<?>> componentProviders) {
+    public Context(Map<Type, Provider<?>> componentProviders) {
         container = componentProviders;
         componentProviders.values().forEach(provider -> {
             if (provider instanceof ComponentProvider<?> componentProvider) {
@@ -34,22 +34,29 @@ public class Context {
         return Optional.ofNullable(container.get(type)).map(provider -> (T) provider.get(this));
     }
 
-    private Optional<ContextConfiguration.Provider<?>> getType(ParameterizedType type) {
+    private Optional<Provider<?>> getType(ParameterizedType type) {
         return Optional.ofNullable(container.get(type));
     }
 
     private void checkDependencies(ComponentProvider<?> provider, Stack<Type> dependencyStack) {
-        if (dependencyStack.contains(provider.componentType)) {
+        Type componentType = provider.getComponentType();
+        if (componentType instanceof ParameterizedType) {
+            return;
+        }
+        if (dependencyStack.contains(componentType)) {
             throw new CyclicDependencyException(dependencyStack.stream().toList());
         }
-        this.getClass().isAssignableFrom()
-        dependencyStack.push(provider.componentType);
+        dependencyStack.push(componentType);
         provider.getDependencies().forEach(dependencyType -> {
-            ContextConfiguration.Provider<?> dependency = container.get(dependencyType);
+            Class<?> dependencyClazz = (Class<?>) (dependencyType instanceof ParameterizedType parameterizedType ? parameterizedType.getActualTypeArguments()[0] : dependencyType);
+            Provider<?> dependency = container.get(dependencyClazz);
             if (dependency == null) {
-                throw new DependencyNotFoundException(provider.componentType, dependencyType);
+                throw new DependencyNotFoundException(componentType, dependencyClazz);
             }
             if (dependency instanceof ComponentProvider<?> componentProvider) {
+                if (dependencyType instanceof ParameterizedType) {
+                    return;
+                }
                 checkDependencies(componentProvider, dependencyStack);
             }
         });

@@ -13,11 +13,11 @@ public class BaseException extends RuntimeException {
         this.instanceType = instanceType;
     }
 
-    public <T> BaseException(Class<?> instanceType, String key) {
+    public <T> BaseException(Type instanceType, String key) {
         this(instanceType, key, null);
     }
 
-    public BaseException(Class<?> instanceType, String key, Throwable cause) {
+    public BaseException(Type instanceType, String key, Throwable cause) {
         super(CommonUtils.getErrorMsg(key), cause);
         this.instanceType = instanceType;
     }

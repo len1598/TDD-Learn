@@ -1,5 +1,7 @@
 package pers.lenwind.container;
 
+import pers.lenwind.container.exception.UnsupportedBindException;
+
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.HashMap;
@@ -12,20 +14,21 @@ public class ContextConfiguration {
         componentProviders.put(componentType, context -> instance);
     }
 
-    public <ComponentType, InstanceType extends ComponentType>
-    void bind(Class<ComponentType> componentType, Class<InstanceType> instanceType) {
+    public <ComponentType>
+    void bind(Class<ComponentType> componentType, Class<? extends ComponentType> instanceType) {
         componentProviders.put(componentType, new ComponentProvider<>(instanceType));
     }
 
-    public void bind(ParameterizedType type, ComponentProvider<?> componentComponentProvider) {
-        componentProviders.put(type, componentComponentProvider);
+    public <ComponentType> void bind(Class<ComponentType> type, ParameterizedType providerType) {
+        if (providerType.getRawType() != Provider.class) {
+            throw new UnsupportedBindException(providerType);
+        }
+        Provider<?> provider = new ComponentProvider<>(providerType);
+        componentProviders.put(type, provider);
+        componentProviders.put(providerType, provider);
     }
 
     public Map<Type, Provider<?>> getComponentProviders() {
         return componentProviders;
-    }
-
-    public interface Provider<T> {
-        T get(Context context);
     }
 }

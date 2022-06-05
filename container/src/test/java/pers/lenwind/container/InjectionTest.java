@@ -7,7 +7,6 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.ArgumentsSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import pers.lenwind.container.exception.BaseException;
 import pers.lenwind.container.exception.IllegalInjectionException;
@@ -26,7 +25,7 @@ import static org.mockito.Mockito.when;
 class InjectionTest {
     private Dependency dependency = mock(Dependency.class);
 
-    private ContextConfiguration.Provider<Dependency> dependencyProvider = mock(ContextConfiguration.Provider.class);
+    private Provider<Dependency> dependencyProvider = mock(Provider.class);
 
     private Context context = mock(Context.class);
 
@@ -40,7 +39,7 @@ class InjectionTest {
     }
 
     @ParameterizedTest(name = "inject dependency to {0}")
-    @ArgumentsSource(ComponentTypeProvider.class)
+    @MethodSource("pers.lenwind.container.ComponentTypeProvider#instanceDependencies")
     void should_inject_dependency_to_component(Class<? extends Component> type) {
         Component component = new ComponentProvider<>(type).get(context);
 
@@ -48,55 +47,11 @@ class InjectionTest {
     }
 
     @ParameterizedTest(name = "inject provider dependency to {0}")
-    @MethodSource("providerDependencies")
+    @MethodSource("pers.lenwind.container.ComponentTypeProvider#providerDependencies")
     void should_inject_provider_dependency_to_component(Class<? extends Component> type) {
         Component component = new ComponentProvider<>(type).get(context);
 
         assertEquals(dependencyProvider, component.getDependencyProvider());
-    }
-
-    static Stream<Arguments> providerDependencies() {
-        return Stream.of(Arguments.of(Named.of("construction type", ConstructionDependencyProvider.class)),
-            Arguments.of(Named.of("field type", FieldDependencyProvider.class)),
-            Arguments.of(Named.of("method type", MethodDependencyProvider.class)));
-    }
-
-    static class ConstructionDependencyProvider implements Component {
-        private ContextConfiguration.Provider<Dependency> dependencyProvider;
-
-        @Inject
-        public ConstructionDependencyProvider(ContextConfiguration.Provider<Dependency> dependencyProvider) {
-            this.dependencyProvider = dependencyProvider;
-        }
-
-        @Override
-        public ContextConfiguration.Provider<Dependency> getDependencyProvider() {
-            return dependencyProvider;
-        }
-    }
-
-    static class FieldDependencyProvider implements Component {
-        @Inject
-        private ContextConfiguration.Provider<Dependency> dependencyProvider;
-
-        @Override
-        public ContextConfiguration.Provider<Dependency> getDependencyProvider() {
-            return dependencyProvider;
-        }
-    }
-
-    static class MethodDependencyProvider implements Component {
-        private ContextConfiguration.Provider<Dependency> dependencyProvider;
-
-        @Inject
-        public void setDependencyProvider(ContextConfiguration.Provider<Dependency> dependencyProvider) {
-            this.dependencyProvider = dependencyProvider;
-        }
-
-        @Override
-        public ContextConfiguration.Provider<Dependency> getDependencyProvider() {
-            return dependencyProvider;
-        }
     }
 
     @Nested

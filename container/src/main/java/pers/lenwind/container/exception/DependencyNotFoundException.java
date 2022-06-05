@@ -6,14 +6,14 @@ import java.lang.reflect.Type;
 
 @ToString(callSuper = true)
 public class DependencyNotFoundException extends BaseException {
-    private Class<?> dependency;
+    private Type dependency;
 
-    public DependencyNotFoundException(Type instanceType, Class<?> dependency) {
+    public DependencyNotFoundException(Type instanceType, Type dependency) {
         super(instanceType);
         this.dependency = dependency;
     }
 
-    public Class<?> getDependencyType() {
+    public Type getDependencyType() {
         return dependency;
     }
 }

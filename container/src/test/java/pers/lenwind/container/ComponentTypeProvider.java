@@ -2,28 +2,31 @@ package pers.lenwind.container;
 
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Named;
-import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.ArgumentsProvider;
 
 import java.lang.reflect.ParameterizedType;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
-public class ComponentTypeProvider implements ArgumentsProvider {
-    @Override
-    public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) {
-        return Stream.of(
-            arguments(Named.of("construction type", ConstructionDependency.class)),
-            arguments(Named.of("method type", MethodDependency.class)),
-            arguments(Named.of("field type", FieldDependency.class)));
+public class ComponentTypeProvider {
+    public static Stream<Arguments> dependencies() {
+        return Stream.concat(instanceDependencies(), providerDependencies());
     }
 
-    public static Stream<Arguments> typeSource = Stream.of(
-        arguments(Named.of("construction type", ConstructionDependency.class)),
-        arguments(Named.of("method type", MethodDependency.class)),
-        arguments(Named.of("field type", FieldDependency.class)));
+    public static Stream<Arguments> providerDependencies() {
+        return Stream.of(
+            Arguments.of(Named.of("provider dependency in construction type", ConstructionDependencyProvider.class)),
+            Arguments.of(Named.of("provider dependency in field type", FieldDependencyProvider.class)),
+            Arguments.of(Named.of("provider dependency in method type", MethodDependencyProvider.class)));
+    }
+
+    public static Stream<Arguments> instanceDependencies() {
+        return Stream.of(
+            arguments(Named.of("dependency in construction type", ConstructionDependency.class)),
+            arguments(Named.of("dependency in method type", MethodDependency.class)),
+            arguments(Named.of("dependency in field type", FieldDependency.class)));
+    }
 
     static class ConstructionDependency implements Component {
 
@@ -67,6 +70,44 @@ public class ComponentTypeProvider implements ArgumentsProvider {
         }
 
     }
+
+    static class ConstructionDependencyProvider implements Component {
+        private Provider<Dependency> dependencyProvider;
+
+        @Inject
+        public ConstructionDependencyProvider(Provider<Dependency> dependencyProvider) {
+            this.dependencyProvider = dependencyProvider;
+        }
+
+        @Override
+        public Provider<Dependency> getDependencyProvider() {
+            return dependencyProvider;
+        }
+    }
+
+    static class FieldDependencyProvider implements Component {
+        @Inject
+        private Provider<Dependency> dependencyProvider;
+
+        @Override
+        public Provider<Dependency> getDependencyProvider() {
+            return dependencyProvider;
+        }
+    }
+
+    static class MethodDependencyProvider implements Component {
+        private Provider<Dependency> dependencyProvider;
+
+        @Inject
+        public void setDependencyProvider(Provider<Dependency> dependencyProvider) {
+            this.dependencyProvider = dependencyProvider;
+        }
+
+        @Override
+        public Provider<Dependency> getDependencyProvider() {
+            return dependencyProvider;
+        }
+    }
 }
 
 abstract class Literal<T> {
@@ -80,7 +121,7 @@ interface Component {
         return null;
     }
 
-    default ContextConfiguration.Provider<Dependency> getDependencyProvider() {
+    default Provider<Dependency> getDependencyProvider() {
         return null;
     }
 }
