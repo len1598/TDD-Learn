@@ -8,6 +8,7 @@
     <modules>
         <module>container</module>
         <module>args-parse</module>
+        <module>web-service</module>
     </modules>
 
     <groupId>org.example</groupId>
