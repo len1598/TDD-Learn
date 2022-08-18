@@ -20,6 +20,8 @@ import org.eclipse.jetty.servlet.ServletHolder;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import pers.lenwind.container.Context;
+import pers.lenwind.container.ContextConfiguration;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -91,6 +93,7 @@ public class ASpike {
             writer.writeTo(result, null, null, null, null, null, resp.getOutputStream());
         }
 
+        // request scope
         Object dispatch(HttpServletRequest req, Stream<Class<?>> rootResources) {
             Class<?> rootClass = rootResources.findFirst().get();
             try {
@@ -111,6 +114,7 @@ public class ASpike {
         }
     }
 
+    // application scope
     @NoArgsConstructor
     static class TestProvider implements Providers {
         private List<MessageBodyWriter> writers;
@@ -118,14 +122,17 @@ public class ASpike {
 
         public TestProvider(Application application) {
             this.application = application;
-            writers = (List<MessageBodyWriter>) this.application.getClasses().stream().filter(MessageBodyWriter.class::isAssignableFrom)
-                .map(c -> {
-                    try {
-                        return c.getConstructor().newInstance();
-                    } catch (Exception e) {
-                        throw new RuntimeException(e);
-                    }
-                }).toList();
+            ContextConfiguration configuration = new ContextConfiguration();
+
+            List<Class<?>> writerClasses = this.application.getClasses().stream().filter(MessageBodyWriter.class::isAssignableFrom).toList();
+            for (Class writerClass : writerClasses) {
+                configuration.bind(writerClass, writerClass);
+            }
+
+            Context context = configuration.toContext();
+
+
+            writers = writerClasses.stream().map(c -> (MessageBodyWriter) context.get(c).get()).toList();
         }
 
         @Override

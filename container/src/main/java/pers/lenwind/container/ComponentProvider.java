@@ -44,9 +44,10 @@ public class ComponentProvider<T> implements Provider<T> {
     @Override
     public T get(Context context) {
         try {
+            constructor.trySetAccessible();
             T instance = constructor.newInstance(toDependencies(context, constructor));
             for (Field field : injectFields) {
-                field.setAccessible(true);
+                field.trySetAccessible();
                 field.set(instance, context.get(field.getGenericType()).get());
             }
             for (Method method : injectMethods) {

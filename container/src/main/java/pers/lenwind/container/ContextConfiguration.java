@@ -2,6 +2,7 @@ package pers.lenwind.container;
 
 import pers.lenwind.container.exception.UnsupportedBindException;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.HashMap;
@@ -10,8 +11,11 @@ import java.util.Map;
 public class ContextConfiguration {
     private final Map<Type, Provider<?>> componentProviders = new HashMap<>();
 
-    public <Type> void bind(Class<Type> componentType, Type instance) {
+    public <Type> void component(Class<Type> componentType, Type instance) {
         componentProviders.put(componentType, context -> instance);
+    }
+
+    public <Type> void component(Class<Type> componentType, Type instance, Annotation... qualifiers) {
     }
 
     public <ComponentType>
@@ -28,7 +32,7 @@ public class ContextConfiguration {
         componentProviders.put(providerType, provider);
     }
 
-    public Map<Type, Provider<?>> getComponentProviders() {
-        return componentProviders;
+    public Context toContext() {
+        return new Context(componentProviders);
     }
 }

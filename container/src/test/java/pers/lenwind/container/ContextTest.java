@@ -25,41 +25,57 @@ public class ContextTest {
         contextConfiguration = new ContextConfiguration();
     }
 
-    @Test
-    void should_bind_specific_instance_to_context() {
-        Component instance = new Component() {
-        };
-        contextConfiguration.bind(Component.class, instance);
+    @Nested
+    class ComponentBind {
+        @Test
+        void should_bind_specific_instance_to_context() {
+            Component instance = new Component() {
+            };
+            contextConfiguration.component(Component.class, instance);
 
-        Component component = (Component) new Context(contextConfiguration.getComponentProviders()).get(Component.class).get();
-        assertSame(instance, component);
-    }
+            Component component = (Component) contextConfiguration.toContext().get(Component.class).get();
+            assertSame(instance, component);
+        }
 
-    static class Instance implements Component {
-    }
+        @Test
+        void should_bind_specific_instance_with_qualifier() {
+            Instance instance = new Instance();
+            contextConfiguration.component(Component.class, instance, AnnotationContainer.getNamed());
 
-    @Test
-    void should_bind_provider_type_to_context() {
-        ParameterizedType type = new Literal<Provider<Instance>>() {
-        }.getType();
-        contextConfiguration.bind(Component.class, type);
+            Component component = (Component) contextConfiguration.toContext().get(Component.class).get();
+            assertSame(instance, component);
+        }
 
-        ComponentProvider<?> componentProvider = (ComponentProvider<?>) new Context(contextConfiguration.getComponentProviders()).get(type).get();
-        assertEquals(type, componentProvider.getComponentType());
-    }
 
-    @Test
-    void should_throw_exception_if_bind_type_by_unsupported_container() {
-        ParameterizedType type = new Literal<List<Instance>>() {
-        }.getType();
-        assertThrows(UnsupportedBindException.class, () -> contextConfiguration.bind(Component.class, type));
-    }
 
-    @Test
-    void should_return_empty_if_not_bind_to_context() {
-        Optional<Component> component = new Context(contextConfiguration.getComponentProviders()).get(Component.class);
 
-        assertTrue(component.isEmpty());
+
+        static class Instance implements Component {
+        }
+
+        @Test
+        void should_bind_provider_type_to_context() {
+            ParameterizedType type = new Literal<Provider<Instance>>() {
+            }.getType();
+            contextConfiguration.bind(Component.class, type);
+
+            ComponentProvider<?> componentProvider = (ComponentProvider<?>) contextConfiguration.toContext().get(type).get();
+            assertEquals(type, componentProvider.getComponentType());
+        }
+
+        @Test
+        void should_throw_exception_if_bind_type_by_unsupported_container() {
+            ParameterizedType type = new Literal<List<Instance>>() {
+            }.getType();
+            assertThrows(UnsupportedBindException.class, () -> contextConfiguration.bind(Component.class, type));
+        }
+
+        @Test
+        void should_return_empty_if_not_bind_to_context() {
+            Optional<Component> component = contextConfiguration.toContext().get(Component.class);
+
+            assertTrue(component.isEmpty());
+        }
     }
 
     @Nested
@@ -69,7 +85,7 @@ public class ContextTest {
         void should_throw_exception_if_dependency_not_found(Class<? extends Component> type) {
             contextConfiguration.bind(Component.class, type);
 
-            DependencyNotFoundException exception = assertThrows(DependencyNotFoundException.class, () -> new Context(contextConfiguration.getComponentProviders()));
+            DependencyNotFoundException exception = assertThrows(DependencyNotFoundException.class, () -> contextConfiguration.toContext());
             assertEquals(type, exception.getInstanceType());
             assertEquals(Dependency.class, exception.getDependencyType());
         }
@@ -81,7 +97,7 @@ public class ContextTest {
             contextConfiguration.bind(Dependency.class, DependencyWithAnotherDependency.class);
             contextConfiguration.bind(AnotherDependency.class, DependencyWithBean.class);
 
-            CyclicDependencyException exception = assertThrows(CyclicDependencyException.class, () -> new Context(contextConfiguration.getComponentProviders()));
+            CyclicDependencyException exception = assertThrows(CyclicDependencyException.class, () -> contextConfiguration.toContext());
             Set<Class<?>> dependencies = Set.of(type, DependencyWithAnotherDependency.class, DependencyWithBean.class);
             assertTrue(exception.getDependencies().containsAll(dependencies));
         }
@@ -92,7 +108,7 @@ public class ContextTest {
             contextConfiguration.bind(Component.class, type);
             contextConfiguration.bind(Dependency.class, DependencyWithComponentProvider.class);
 
-            assertDoesNotThrow(() -> new Context(contextConfiguration.getComponentProviders()));
+            assertDoesNotThrow(() -> contextConfiguration.toContext());
         }
 
         static class DependencyWithComponentProvider implements Dependency {
