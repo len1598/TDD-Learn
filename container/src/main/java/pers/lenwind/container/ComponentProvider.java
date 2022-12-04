@@ -26,11 +26,6 @@ public class ComponentProvider<T> implements Provider<T> {
         init(componentType);
     }
 
-    public ComponentProvider(ParameterizedType componentType) {
-        this.componentType = componentType;
-        init((Class) componentType.getActualTypeArguments()[0]);
-    }
-
     public Type getComponentType() {
         return componentType;
     }

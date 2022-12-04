@@ -2,16 +2,15 @@ package pers.lenwind.container;
 
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import pers.lenwind.container.exception.CyclicDependencyException;
 import pers.lenwind.container.exception.DependencyNotFoundException;
-import pers.lenwind.container.exception.UnsupportedBindException;
 
 import java.lang.reflect.ParameterizedType;
-import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -38,6 +37,7 @@ public class ContextTest {
         }
 
         @Test
+        @Disabled
         void should_bind_specific_instance_with_qualifier() {
             Instance instance = new Instance();
             contextConfiguration.component(Component.class, instance, AnnotationContainer.getNamed());
@@ -54,27 +54,19 @@ public class ContextTest {
         }
 
         @Test
-        void should_bind_provider_type_to_context() {
-            ParameterizedType type = new Literal<Provider<Instance>>() {
-            }.getType();
-            contextConfiguration.bind(Component.class, type);
-
-            ComponentProvider<?> componentProvider = (ComponentProvider<?>) contextConfiguration.toContext().get(type).get();
-            assertEquals(type, componentProvider.getComponentType());
-        }
-
-        @Test
-        void should_throw_exception_if_bind_type_by_unsupported_container() {
-            ParameterizedType type = new Literal<List<Instance>>() {
-            }.getType();
-            assertThrows(UnsupportedBindException.class, () -> contextConfiguration.bind(Component.class, type));
-        }
-
-        @Test
         void should_return_empty_if_not_bind_to_context() {
             Optional<Component> component = contextConfiguration.toContext().get(Component.class);
 
             assertTrue(component.isEmpty());
+        }
+
+        @Test
+        void should_return_provider_type_if_want() {
+            contextConfiguration.bind(Component.class, Instance.class);
+            ParameterizedType type = new Literal<Provider<Component>>() {
+            }.getType();
+            Optional<Provider<Instance>> optional = contextConfiguration.toContext().get(type);
+            assertTrue(optional.isPresent());
         }
     }
 

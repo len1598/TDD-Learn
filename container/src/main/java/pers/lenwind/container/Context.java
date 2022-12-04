@@ -10,11 +10,12 @@ import java.util.Optional;
 import java.util.Stack;
 
 public class Context {
-    private Map<Type, Provider<?>> container;
+    private Map<Ref, Provider<?>> container;
 
-    public Context(Map<Type, Provider<?>> componentProviders) {
-        container = componentProviders;
-        componentProviders.values().forEach(provider -> {
+
+    public Context(Map<Ref, Provider<?>> initialCache) {
+        this.container = initialCache;
+        this.container.values().forEach(provider -> {
             if (provider instanceof ComponentProvider<?> componentProvider) {
                 checkDependencies(componentProvider, new Stack<>());
             }
@@ -31,11 +32,11 @@ public class Context {
     }
 
     private <T> Optional<T> getType(Class<T> type) {
-        return Optional.ofNullable(container.get(type)).map(provider -> (T) provider.get(this));
+        return Optional.ofNullable(container.get(Ref.of(type))).map(provider -> (T) provider.get(this));
     }
 
     private Optional<Provider<?>> getType(ParameterizedType type) {
-        return Optional.ofNullable(container.get(type));
+        return Optional.ofNullable(container.get(Ref.of((Class<?>) type.getActualTypeArguments()[0])));
     }
 
     private void checkDependencies(ComponentProvider<?> provider, Stack<Type> dependencyStack) {
@@ -49,7 +50,7 @@ public class Context {
         dependencyStack.push(componentType);
         provider.getDependencies().forEach(dependencyType -> {
             Class<?> dependencyClazz = (Class<?>) (dependencyType instanceof ParameterizedType parameterizedType ? parameterizedType.getActualTypeArguments()[0] : dependencyType);
-            Provider<?> dependency = container.get(dependencyClazz);
+            Provider<?> dependency = container.get(Ref.of(dependencyClazz));
             if (dependency == null) {
                 throw new DependencyNotFoundException(componentType, dependencyClazz);
             }
