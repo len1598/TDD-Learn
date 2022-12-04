@@ -3,6 +3,7 @@ package pers.lenwind.container;
 import pers.lenwind.container.exception.CyclicDependencyException;
 import pers.lenwind.container.exception.DependencyNotFoundException;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Map;
@@ -22,21 +23,32 @@ public class Context {
         });
     }
 
-    public Optional get(Type type) {
+    public <T> Optional<T> getInstance(Class<T> type, Annotation qualifier) {
+        return Optional.ofNullable(container.get(Ref.of(type, qualifier))).map(provider -> (T) provider.get(this));
+    }
+
+    public <T> Optional<T> getInstance(Class<T> type) {
+        return getInstance(type, null);
+    }
+
+    public <T> Optional<Provider<T>> getProvider(Class<T> type) {
+        return getProvider(type, null);
+    }
+
+    public <T> Optional<Provider<T>> getProvider(Class<T> type, Annotation qualifier) {
+        return Optional.ofNullable(container.get(Ref.of(type, qualifier))).map(p -> (Provider<T>) p);
+    }
+
+    Optional get(Type type, Annotation qualifier) {
         if (type instanceof ParameterizedType parameterizedType) {
-            return getType(parameterizedType);
+            if (parameterizedType.getRawType() != Provider.class) {
+                return Optional.empty();
+            }
+            return getProvider((Class<?>)parameterizedType.getActualTypeArguments()[0], qualifier);
         } else if (type instanceof Class clazz) {
-            return getType(clazz);
+            return getInstance(clazz, qualifier);
         }
         return Optional.empty();
-    }
-
-    private <T> Optional<T> getType(Class<T> type) {
-        return Optional.ofNullable(container.get(Ref.of(type))).map(provider -> (T) provider.get(this));
-    }
-
-    private Optional<Provider<?>> getType(ParameterizedType type) {
-        return Optional.ofNullable(container.get(Ref.of((Class<?>) type.getActualTypeArguments()[0])));
     }
 
     private void checkDependencies(ComponentProvider<?> provider, Stack<Type> dependencyStack) {

@@ -2,7 +2,6 @@ package pers.lenwind.container;
 
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -10,7 +9,6 @@ import org.junit.jupiter.params.provider.MethodSource;
 import pers.lenwind.container.exception.CyclicDependencyException;
 import pers.lenwind.container.exception.DependencyNotFoundException;
 
-import java.lang.reflect.ParameterizedType;
 import java.util.Optional;
 import java.util.Set;
 
@@ -32,22 +30,30 @@ public class ContextTest {
             };
             contextConfiguration.component(Component.class, instance);
 
-            Component component = (Component) contextConfiguration.toContext().get(Component.class).get();
+            Component component = contextConfiguration.toContext().getInstance(Component.class).get();
             assertSame(instance, component);
         }
 
         @Test
-        @Disabled
         void should_bind_specific_instance_with_qualifier() {
             Instance instance = new Instance();
             contextConfiguration.component(Component.class, instance, AnnotationContainer.getNamed());
 
-            Component component = (Component) contextConfiguration.toContext().get(Component.class).get();
+            Component component = contextConfiguration.toContext().getInstance(Component.class, AnnotationContainer.getNamed()).get();
             assertSame(instance, component);
         }
 
 
+        @Test
+        void should_bind_component_with_qualifier() {
+            contextConfiguration.bind(Component.class, Instance.class, AnnotationContainer.getNamed());
 
+            Optional<Component> component = contextConfiguration.toContext().getInstance(Component.class, AnnotationContainer.getNamed());
+            assertTrue(component.isPresent());
+        }
+
+        // TODO should throw exception if not a qualifier annotation
+        // TODO should return empty if qualifier not equal
 
 
         static class Instance implements Component {
@@ -55,7 +61,7 @@ public class ContextTest {
 
         @Test
         void should_return_empty_if_not_bind_to_context() {
-            Optional<Component> component = contextConfiguration.toContext().get(Component.class);
+            Optional<Component> component = contextConfiguration.toContext().getInstance(Component.class);
 
             assertTrue(component.isEmpty());
         }
@@ -63,9 +69,8 @@ public class ContextTest {
         @Test
         void should_return_provider_type_if_want() {
             contextConfiguration.bind(Component.class, Instance.class);
-            ParameterizedType type = new Literal<Provider<Component>>() {
-            }.getType();
-            Optional<Provider<Instance>> optional = contextConfiguration.toContext().get(type);
+
+            Optional<Provider<Component>> optional = contextConfiguration.toContext().getProvider(Component.class);
             assertTrue(optional.isPresent());
         }
     }

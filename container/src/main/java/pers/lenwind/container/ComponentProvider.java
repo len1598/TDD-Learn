@@ -1,11 +1,13 @@
 package pers.lenwind.container;
 
 import jakarta.inject.Inject;
+import jakarta.inject.Qualifier;
 import pers.lenwind.container.exception.BaseException;
 import pers.lenwind.container.exception.IllegalInjectionException;
 import pers.lenwind.container.exception.MultiInjectException;
 import pers.lenwind.container.exception.NoAvailableConstructionException;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -43,7 +45,7 @@ public class ComponentProvider<T> implements Provider<T> {
             T instance = constructor.newInstance(toDependencies(context, constructor));
             for (Field field : injectFields) {
                 field.trySetAccessible();
-                field.set(instance, context.get(field.getGenericType()).get());
+                field.set(instance, context.get(field.getGenericType(), getQualifier(field)).get());
             }
             for (Method method : injectMethods) {
                 method.invoke(instance, toDependencies(context, method));
@@ -52,6 +54,11 @@ public class ComponentProvider<T> implements Provider<T> {
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    // TODO should throw exception if multiple qualifier annotation found
+    private static Annotation getQualifier(AnnotatedElement executable) {
+        return Arrays.stream(executable.getAnnotations()).filter(f -> f.annotationType().isAnnotationPresent(Qualifier.class)).findFirst().get();
     }
 
     public List<Type> getDependencies() {
@@ -63,7 +70,7 @@ public class ComponentProvider<T> implements Provider<T> {
 
     private static Object[] toDependencies(Context context, Executable executable) {
         return Arrays.stream(executable.getGenericParameterTypes())
-            .map(type -> context.get(type).get()).toArray();
+            .map(type -> context.get(type, getQualifier(executable)).get()).toArray();
     }
 
     private static <T> Constructor<T> getConstructor(Class<T> implementation) {

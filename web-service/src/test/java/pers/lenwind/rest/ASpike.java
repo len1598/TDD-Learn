@@ -132,7 +132,7 @@ public class ASpike {
             Context context = configuration.toContext();
 
 
-            writers = writerClasses.stream().map(c -> (MessageBodyWriter) context.get(c).get()).toList();
+            writers = writerClasses.stream().map(c -> (MessageBodyWriter) context.getInstance(c).get()).toList();
         }
 
         @Override

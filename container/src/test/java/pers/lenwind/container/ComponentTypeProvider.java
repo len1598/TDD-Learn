@@ -4,7 +4,6 @@ import jakarta.inject.Inject;
 import org.junit.jupiter.api.Named;
 import org.junit.jupiter.params.provider.Arguments;
 
-import java.lang.reflect.ParameterizedType;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.params.provider.Arguments.arguments;
@@ -107,12 +106,6 @@ public class ComponentTypeProvider {
         public Provider<Dependency> getDependencyProvider() {
             return dependencyProvider;
         }
-    }
-}
-
-abstract class Literal<T> {
-    ParameterizedType getType() {
-        return (ParameterizedType) ((ParameterizedType) getClass().getGenericSuperclass()).getActualTypeArguments()[0];
     }
 }
 
