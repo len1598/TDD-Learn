@@ -42,7 +42,7 @@ public class ComponentProvider<T> implements Provider<T> {
             T instance = constructor.newInstance(toDependencies(context, constructor));
             for (Field field : injectFields) {
                 field.trySetAccessible();
-                field.set(instance, context.get(field.getGenericType(), getQualifier(field)).get());
+                field.set(instance, context.get(Descriptor.of(field.getGenericType(), getQualifier(field))).get());
             }
             for (Method method : injectMethods) {
                 method.invoke(instance, toDependencies(context, method));
@@ -72,16 +72,16 @@ public class ComponentProvider<T> implements Provider<T> {
 
     private Descriptor toDescriptor(Map.Entry<Type, Annotation[]> entry) {
         Type type = entry.getKey();
-        Annotation qualifier = Arrays.stream(entry.getValue()).filter(a -> a.annotationType().isAnnotationPresent(Qualifier.class)).findFirst().orElse(null);
-        if (type instanceof ParameterizedType providerType) {
-            return new Descriptor((Class<?>) providerType.getActualTypeArguments()[0], true, qualifier);
-        }
-        return new Descriptor((Class<?>) type, false, qualifier);
+        Annotation qualifier = Arrays.stream(entry.getValue())
+            .filter(a -> a.annotationType().isAnnotationPresent(Qualifier.class))
+            .findFirst()
+            .orElse(null);
+        return Descriptor.of(type, qualifier);
     }
 
     private static Object[] toDependencies(Context context, Executable executable) {
         return Arrays.stream(executable.getGenericParameterTypes())
-            .map(type -> context.get(type, getQualifier(executable)).get()).toArray();
+            .map(type -> context.get(Descriptor.of(type, getQualifier(executable))).get()).toArray();
     }
 
     private static <T> Constructor<T> getConstructor(Class<T> implementation) {

@@ -34,8 +34,8 @@ class InjectionTest {
     @BeforeEach
     void setUp() throws NoSuchFieldException {
         dependencyProviderType = (ParameterizedType) InjectionTest.class.getDeclaredField("dependencyProvider").getGenericType();
-        when(context.get(eq(Dependency.class), eq(null))).thenReturn(Optional.of(dependency));
-        when(context.get(eq(dependencyProviderType), eq(null))).thenReturn(Optional.of(dependencyProvider));
+        when(context.get(eq(Descriptor.of(Dependency.class, null)))).thenReturn(Optional.of(dependency));
+        when(context.get(eq(Descriptor.of(dependencyProviderType, null)))).thenReturn(Optional.of(dependencyProvider));
     }
 
     @ParameterizedTest(name = "inject {0}")
@@ -56,7 +56,7 @@ class InjectionTest {
 
     @Test
     void should_inject_dependency_with_qualifier() {
-        when(context.get(eq(String.class), eq(AnnotationContainer.getNamed()))).thenReturn(Optional.of("any"));
+        when(context.get(eq(Descriptor.of(String.class, AnnotationContainer.getNamed())))).thenReturn(Optional.of("any"));
         QualifierComponent component = new ComponentProvider<>(QualifierComponent.class).get(context);
 
         assertEquals("any", component.dependency);

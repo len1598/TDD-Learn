@@ -4,8 +4,6 @@ import pers.lenwind.container.exception.CyclicDependencyException;
 import pers.lenwind.container.exception.DependencyNotFoundException;
 
 import java.lang.annotation.Annotation;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -41,18 +39,10 @@ public class Context {
         return Optional.ofNullable(container.get(Ref.of(type, qualifier))).map(p -> (Provider<T>) p);
     }
 
-    Optional get(Type type, Annotation qualifier) {
-        if (type instanceof ParameterizedType parameterizedType) {
-            if (parameterizedType.getRawType() != Provider.class) {
-                return Optional.empty();
-            }
-            return getProvider((Class<?>)parameterizedType.getActualTypeArguments()[0], qualifier);
-        } else if (type instanceof Class clazz) {
-            return getInstance(clazz, qualifier);
-        }
-        return Optional.empty();
+    Optional get(Descriptor descriptor) {
+        return descriptor.isProvider() ? getProvider(descriptor.type(), descriptor.qualifier())
+            : getInstance(descriptor.type(), descriptor.qualifier());
     }
-
 
     private void checkDependencies(Descriptor descriptor, List<Descriptor> dependencies, Stack<Descriptor> dependencyStack) {
         if (dependencyStack.contains(descriptor)) {
