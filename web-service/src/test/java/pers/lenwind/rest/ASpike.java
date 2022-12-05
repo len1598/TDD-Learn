@@ -1,5 +1,7 @@
 package pers.lenwind.rest;
 
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -20,6 +22,7 @@ import org.eclipse.jetty.servlet.ServletHolder;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import pers.lenwind.container.Config;
 import pers.lenwind.container.Context;
 import pers.lenwind.container.ContextConfiguration;
 
@@ -112,6 +115,13 @@ public class ASpike {
         public Set<Class<?>> getClasses() {
             return Set.of(TestResource.class, StringMessageBodyWriter.class);
         }
+
+        public Config getConfig() {
+            return new Config() {
+                @Named("prefix")
+                public String prefix = "test";
+            };
+        }
     }
 
     // application scope
@@ -120,9 +130,10 @@ public class ASpike {
         private List<MessageBodyWriter> writers;
         private Application application;
 
-        public TestProvider(Application application) {
+        public TestProvider(TestApplication application) {
             this.application = application;
             ContextConfiguration configuration = new ContextConfiguration();
+            configuration.from(application.getConfig());
 
             List<Class<?>> writerClasses = this.application.getClasses().stream().filter(MessageBodyWriter.class::isAssignableFrom).toList();
             for (Class writerClass : writerClasses) {
@@ -157,7 +168,12 @@ public class ASpike {
     }
 
     @NoArgsConstructor
+    @Provider
     static class StringMessageBodyWriter implements MessageBodyWriter<String> {
+        @Inject
+        @Named("prefix")
+        String prefix;
+
         @Override
         public boolean isWriteable(Class<?> type, Type genericType, Annotation[] annotations, MediaType mediaType) {
             return type == String.class;

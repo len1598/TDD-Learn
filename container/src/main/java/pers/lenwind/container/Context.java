@@ -6,6 +6,7 @@ import pers.lenwind.container.exception.DependencyNotFoundException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Stack;
@@ -16,11 +17,12 @@ public class Context {
 
     public Context(Map<Ref, Provider<?>> initialCache) {
         this.container = initialCache;
-        this.container.values().forEach(provider -> {
+        this.container.forEach(((ref, provider) -> {
             if (provider instanceof ComponentProvider<?> componentProvider) {
-                checkDependencies(componentProvider, new Stack<>());
+                checkDependencies(new Descriptor(componentProvider.getComponentType(), false, ref.getQualifier()),
+                    componentProvider.getDependencies(), new Stack<>());
             }
-        });
+        }));
     }
 
     public <T> Optional<T> getInstance(Class<T> type, Annotation qualifier) {
@@ -51,26 +53,24 @@ public class Context {
         return Optional.empty();
     }
 
-    private void checkDependencies(ComponentProvider<?> provider, Stack<Type> dependencyStack) {
-        Type componentType = provider.getComponentType();
-        if (componentType instanceof ParameterizedType) {
-            return;
-        }
-        if (dependencyStack.contains(componentType)) {
+
+    private void checkDependencies(Descriptor descriptor, List<Descriptor> dependencies, Stack<Descriptor> dependencyStack) {
+        if (dependencyStack.contains(descriptor)) {
             throw new CyclicDependencyException(dependencyStack.stream().toList());
         }
-        dependencyStack.push(componentType);
-        provider.getDependencies().forEach(dependencyType -> {
-            Class<?> dependencyClazz = (Class<?>) (dependencyType instanceof ParameterizedType parameterizedType ? parameterizedType.getActualTypeArguments()[0] : dependencyType);
-            Provider<?> dependency = container.get(Ref.of(dependencyClazz));
-            if (dependency == null) {
-                throw new DependencyNotFoundException(componentType, dependencyClazz);
+        dependencyStack.push(descriptor);
+        dependencies.forEach(dependency -> {
+            Provider<?> dependencyProvider = container.get(dependency.toRef());
+            if (dependencyProvider == null) {
+                throw new DependencyNotFoundException(descriptor.type(), dependency.type());
             }
-            if (dependencyType instanceof ParameterizedType) {
+            if (dependency.isProvider()) {
                 return;
             }
-            if (dependency instanceof ComponentProvider<?> componentProvider) {
-                checkDependencies(componentProvider, dependencyStack);
+            // TODO singleton type provider
+            if (dependencyProvider instanceof ComponentProvider<?> componentProvider) {
+                checkDependencies(new Descriptor(componentProvider.getComponentType(), false, dependency.qualifier()),
+                    componentProvider.getDependencies(), dependencyStack);
             }
         });
         dependencyStack.pop();

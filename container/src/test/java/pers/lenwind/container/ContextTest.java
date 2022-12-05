@@ -1,6 +1,7 @@
 package pers.lenwind.container;
 
 import jakarta.inject.Inject;
+import jakarta.inject.Named;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -37,7 +38,11 @@ public class ContextTest {
         @Test
         void should_bind_specific_instance_with_qualifier() {
             Instance instance = new Instance();
-            contextConfiguration.component(Component.class, instance, AnnotationContainer.getNamed());
+            contextConfiguration.from(new Config() {
+                @Named
+                @Export(Component.class)
+                public Instance component = instance;
+            });
 
             Component component = contextConfiguration.toContext().getInstance(Component.class, AnnotationContainer.getNamed()).get();
             assertSame(instance, component);
@@ -46,7 +51,11 @@ public class ContextTest {
 
         @Test
         void should_bind_component_with_qualifier() {
-            contextConfiguration.bind(Component.class, Instance.class, AnnotationContainer.getNamed());
+            contextConfiguration.from(new Config() {
+                @Named
+                @Export(Component.class)
+                public Instance component;
+            });
 
             Optional<Component> component = contextConfiguration.toContext().getInstance(Component.class, AnnotationContainer.getNamed());
             assertTrue(component.isPresent());
@@ -54,6 +63,7 @@ public class ContextTest {
 
         // TODO should throw exception if not a qualifier annotation
         // TODO should return empty if qualifier not equal
+        // TODO should check dependency with qualifier
 
 
         static class Instance implements Component {
@@ -87,6 +97,7 @@ public class ContextTest {
             assertEquals(Dependency.class, exception.getDependencyType());
         }
 
+        // TODO use cache to resolve cyclic dependency
         @ParameterizedTest(name = "Cyclic {0}")
         @MethodSource("pers.lenwind.container.ComponentTypeProvider#instanceDependencies")
         void should_throw_exception_if_cyclic_dependency(Class<? extends Component> type) {

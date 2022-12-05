@@ -9,15 +9,12 @@ import pers.lenwind.container.exception.NoAvailableConstructionException;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.function.BiFunction;
 import java.util.stream.Stream;
 
 public class ComponentProvider<T> implements Provider<T> {
-    final private Type componentType;
+    final private Class<T> componentType;
 
     private Constructor<T> constructor;
 
@@ -28,7 +25,7 @@ public class ComponentProvider<T> implements Provider<T> {
         init(componentType);
     }
 
-    public Type getComponentType() {
+    public Class<T> getComponentType() {
         return componentType;
     }
 
@@ -58,14 +55,28 @@ public class ComponentProvider<T> implements Provider<T> {
 
     // TODO should throw exception if multiple qualifier annotation found
     private static Annotation getQualifier(AnnotatedElement executable) {
-        return Arrays.stream(executable.getAnnotations()).filter(f -> f.annotationType().isAnnotationPresent(Qualifier.class)).findFirst().get();
+        return Arrays.stream(executable.getAnnotations()).filter(f -> f.annotationType().isAnnotationPresent(Qualifier.class)).findFirst().orElse(null);
     }
 
-    public List<Type> getDependencies() {
-        return CommonUtils.concatStreamToList(
-            Arrays.stream(constructor.getGenericParameterTypes()),
-            injectFields.stream().map(Field::getGenericType),
-            injectMethods.stream().flatMap(method1 -> Arrays.stream(method1.getGenericParameterTypes())));
+    public List<Descriptor> getDependencies() {
+        Stream<Descriptor> constructorDependencies = toDescriptors(Arrays.stream(constructor.getGenericParameterTypes()), Arrays.stream(constructor.getParameterAnnotations()));
+        Stream<Descriptor> fieldDependencies = toDescriptors(injectFields.stream().map(Field::getGenericType), injectFields.stream().map(Field::getAnnotations));
+        Stream<Descriptor> methodDependencies = toDescriptors(injectMethods.stream().flatMap(m -> Arrays.stream(m.getGenericParameterTypes())),
+            injectMethods.stream().flatMap(m -> Arrays.stream(m.getParameterAnnotations())));
+        return CommonUtils.concatStreamToList(constructorDependencies, fieldDependencies, methodDependencies);
+    }
+
+    private Stream<Descriptor> toDescriptors(Stream<Type> types, Stream<Annotation[]> qualifiers) {
+        return CommonUtils.zipStream(types, qualifiers).stream().map(this::toDescriptor);
+    }
+
+    private Descriptor toDescriptor(Map.Entry<Type, Annotation[]> entry) {
+        Type type = entry.getKey();
+        Annotation qualifier = Arrays.stream(entry.getValue()).filter(a -> a.annotationType().isAnnotationPresent(Qualifier.class)).findFirst().orElse(null);
+        if (type instanceof ParameterizedType providerType) {
+            return new Descriptor((Class<?>) providerType.getActualTypeArguments()[0], true, qualifier);
+        }
+        return new Descriptor((Class<?>) type, false, qualifier);
     }
 
     private static Object[] toDependencies(Context context, Executable executable) {

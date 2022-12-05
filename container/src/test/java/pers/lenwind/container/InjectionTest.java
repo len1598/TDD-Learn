@@ -18,7 +18,6 @@ import java.util.Optional;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -35,8 +34,8 @@ class InjectionTest {
     @BeforeEach
     void setUp() throws NoSuchFieldException {
         dependencyProviderType = (ParameterizedType) InjectionTest.class.getDeclaredField("dependencyProvider").getGenericType();
-        when(context.get(eq(Dependency.class), any())).thenReturn(Optional.of(dependency));
-        when(context.get(eq(dependencyProviderType), any())).thenReturn(Optional.of(dependencyProvider));
+        when(context.get(eq(Dependency.class), eq(null))).thenReturn(Optional.of(dependency));
+        when(context.get(eq(dependencyProviderType), eq(null))).thenReturn(Optional.of(dependencyProvider));
     }
 
     @ParameterizedTest(name = "inject {0}")
