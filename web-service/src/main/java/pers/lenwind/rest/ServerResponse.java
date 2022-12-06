@@ -1,0 +1,12 @@
+package pers.lenwind.rest;
+
+import jakarta.ws.rs.core.GenericEntity;
+import jakarta.ws.rs.core.Response;
+
+import java.lang.annotation.Annotation;
+
+abstract class ServerResponse extends Response {
+    abstract GenericEntity getGenericEntity();
+
+    abstract Annotation[] getAnnotations();
+}
