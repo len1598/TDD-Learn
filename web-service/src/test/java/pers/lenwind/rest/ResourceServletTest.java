@@ -15,7 +15,9 @@ import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
+import java.net.http.HttpResponse;
 import java.util.Locale;
+import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -46,7 +48,6 @@ public class ResourceServletTest extends ServletTest {
         when(runtime.getResourceRouter()).thenReturn(router);
         when(runtime.createResourceContext(any(), any())).thenReturn(resourceContext);
         when(runtime.getProviders()).thenReturn(providers);
-        when(router.dispatch(any(), eq(resourceContext))).thenReturn(response);
 
         return new ResourceServlet(runtime);
     }
@@ -85,38 +86,58 @@ public class ResourceServletTest extends ServletTest {
 
     @Test
     void should_use_status_from_response() throws Exception {
-        responseBuilder.status(Response.Status.NOT_MODIFIED).build();
+        responseBuilder.status(Response.Status.NOT_MODIFIED).returnFrom(router);
 
-        assertEquals(Response.Status.NOT_MODIFIED.getStatusCode(), get("/test").statusCode());
+        HttpResponse<String> httpResponse = get("/test");
+
+        assertEquals(Response.Status.NOT_MODIFIED.getStatusCode(), httpResponse.statusCode());
     }
 
     @Test
     void should_use_headers_from_response() throws Exception {
         MultivaluedHashMap<String, Object> headers = new MultivaluedHashMap<>();
-        NewCookie sessionId = new NewCookie.Builder("SessionId").value("session").build();
-        NewCookie userId = new NewCookie.Builder("UserId").value("user").build();
-        headers.addAll("Set-Cookie", sessionId, userId);
+        headers.addAll("Set-Cookie", new NewCookie.Builder("SessionId").value("session").build(), new NewCookie.Builder("UserId").value("user").build());
+        responseBuilder.headers(headers).returnFrom(router);
 
-        responseBuilder.headers(headers).build();
+        HttpResponse<String> httpResponse = get("/test");
 
-        assertArrayEquals(new String[]{"SessionId=session", "UserId=user"}, get("/test").headers().allValues("Set-Cookie").toArray(String[]::new));
+        assertArrayEquals(new String[]{"SessionId=session", "UserId=user"}, httpResponse.headers().allValues("Set-Cookie").toArray(String[]::new));
     }
 
     @Test
     void should_use_generic_entity_from_response() throws Exception {
-        GenericEntity<String> entity = new GenericEntity<>("txt", String.class);
+        OutboundResponseBuilder outboundResponseBuilder = responseBuilder.body(new GenericEntity<>("txt", String.class), new Annotation[0], MediaType.TEXT_PLAIN_TYPE);
+        outboundResponseBuilder.returnFrom(router);
 
-        responseBuilder.body(entity, new Annotation[0], MediaType.TEXT_PLAIN_TYPE).build();
+        HttpResponse<String> httpResponse = get("/test");
 
-        assertEquals("txt", get("/test").body());
+        assertEquals("txt", httpResponse.body());
+    }
+
+    // TODO exist exception to client
+    @Test
+    void should_use_response_while_throw_web_application_exception_with_response() throws Exception {
+        responseBuilder.body("error").status(Response.Status.FORBIDDEN).throwFrom(router);
+
+        HttpResponse<String> httpResponse = get("/test");
+
+        assertEquals("error", httpResponse.body());
+        assertEquals(Response.Status.FORBIDDEN.getStatusCode(), httpResponse.statusCode());
+    }
+    //      - WebApplicationException with null response, use ExceptionMapper
+
+    @Test
+    void should_use_exception_mapper_while_throw_other_exception() throws Exception {
+        when(router.dispatch(any(), eq(resourceContext))).thenThrow(RuntimeException.class);
+        when(providers.getExceptionMapper(eq(RuntimeException.class))).thenReturn(e -> responseBuilder.status(Response.Status.FORBIDDEN).build());
+
+        HttpResponse<String> httpResponse = get("/test");
+
+        assertEquals(Response.Status.FORBIDDEN.getStatusCode(), httpResponse.statusCode());
     }
 
     // TODO 500 if message writer missing
-    // TODO exist exception to client
-    //      - WebApplicationException with response, use response
-    //      - WebApplicationException with null response, use ExceptionMapper
-    //      - other Exception, use ExceptionMapper
-
+    // TODO entity is null, ignore messageBodyWriter
     class OutboundResponseBuilder {
         Response.Status status = Response.Status.OK;
         MultivaluedHashMap<String, Object> headers = new MultivaluedHashMap<>();
@@ -134,6 +155,11 @@ public class ResourceServletTest extends ServletTest {
             return this;
         }
 
+        OutboundResponseBuilder body(String body) {
+            this.entity = new GenericEntity(body, String.class);
+            return this;
+        }
+
         OutboundResponseBuilder body(GenericEntity entity, Annotation[] annotations, MediaType mediaType) {
             this.entity = entity;
             this.annotations = annotations;
@@ -141,12 +167,29 @@ public class ResourceServletTest extends ServletTest {
             return this;
         }
 
-        void build() {
+        void returnFrom(ResourceRouter router) {
+            build(r -> when(router.dispatch(any(), eq(resourceContext))).thenReturn(r));
+        }
+
+        void throwFrom(ResourceRouter router) {
+            build(r -> {
+                WebApplicationException exception = new WebApplicationException(r);
+                when(router.dispatch(any(), eq(resourceContext))).thenThrow(exception);
+            });
+        }
+
+        OutboundResponse build() {
             when(response.getGenericEntity()).thenReturn(entity);
             when(response.getStatus()).thenReturn(status.getStatusCode());
+            when(response.getStatusInfo()).thenReturn(status);
             when(response.getHeaders()).thenReturn(headers);
             when(response.getAnnotations()).thenReturn(annotations);
             when(response.getMediaType()).thenReturn(mediaType);
+            return response;
+        }
+
+        private void build(Consumer<OutboundResponse> consumer) {
+            consumer.accept(build());
         }
     }
 }
