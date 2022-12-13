@@ -17,6 +17,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
 import java.net.http.HttpResponse;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
@@ -114,7 +115,6 @@ public class ResourceServletTest extends ServletTest {
         assertEquals("txt", httpResponse.body());
     }
 
-    // TODO exist exception to client
     @Test
     void should_use_response_while_throw_web_application_exception_with_response() throws Exception {
         responseBuilder.body("error").status(Response.Status.FORBIDDEN).throwFrom(router);
@@ -124,7 +124,6 @@ public class ResourceServletTest extends ServletTest {
         assertEquals("error", httpResponse.body());
         assertEquals(Response.Status.FORBIDDEN.getStatusCode(), httpResponse.statusCode());
     }
-    //      - WebApplicationException with null response, use ExceptionMapper
 
     @Test
     void should_use_exception_mapper_while_throw_other_exception() throws Exception {
@@ -137,7 +136,59 @@ public class ResourceServletTest extends ServletTest {
     }
 
     // TODO 500 if message writer missing
+
+    @Test
+    void should_return_500_while_message_body_writer_not_found() {
+
+    }
     // TODO entity is null, ignore messageBodyWriter
+
+    @Test
+    void should_not_call_message_body_writer_if_entity_is_null() throws Exception {
+        responseBuilder.body(null).returnFrom(router);
+
+        HttpResponse<String> httpResponse = get("/test");
+
+        assertEquals(Response.Status.OK.getStatusCode(), httpResponse.statusCode());
+    }
+
+
+    // TODO 500 if header delegate
+    // TODO 500 if exception mapper
+
+    // may throw exception
+    // TODO exception mapper
+
+    @Test
+    void should_use_response_from_web_application_exception_thrown_by_exception_mapper() throws Exception {
+        responseBuilder.status(Response.Status.FORBIDDEN).throwFrom(router, RuntimeException.class);
+        when(providers.getExceptionMapper(eq(RuntimeException.class))).thenReturn(e -> {
+            throw new WebApplicationException(response);
+        });
+
+        HttpResponse<String> httpResponse = get("/test");
+
+        assertEquals(Response.Status.FORBIDDEN.getStatusCode(), httpResponse.statusCode());
+    }
+
+    @Test
+    void should_map_exception_thrown_by_exception_mapper() throws Exception {
+        responseBuilder.status(Response.Status.FORBIDDEN).throwFrom(router, RuntimeException.class);
+        when(providers.getExceptionMapper(eq(RuntimeException.class))).thenReturn(e -> {
+            throw new IllegalArgumentException();
+        });
+        when(providers.getExceptionMapper(eq(IllegalArgumentException.class))).thenReturn(e -> response);
+
+        HttpResponse<String> httpResponse = get("/test");
+
+        assertEquals(Response.Status.FORBIDDEN.getStatusCode(), httpResponse.statusCode());
+    }
+
+    // TODO providers get exception mapper
+    // TODO create header delegate
+    // TODO providers get message body writer
+    // TODO message body writer writerTo
+
     class OutboundResponseBuilder {
         Response.Status status = Response.Status.OK;
         MultivaluedHashMap<String, Object> headers = new MultivaluedHashMap<>();
@@ -156,7 +207,7 @@ public class ResourceServletTest extends ServletTest {
         }
 
         OutboundResponseBuilder body(String body) {
-            this.entity = new GenericEntity(body, String.class);
+            this.entity = Optional.ofNullable(body).map(b -> new GenericEntity(b, String.class)).orElse(null);
             return this;
         }
 
@@ -172,9 +223,17 @@ public class ResourceServletTest extends ServletTest {
         }
 
         void throwFrom(ResourceRouter router) {
+            throwFrom(router, null);
+        }
+
+        void throwFrom(ResourceRouter router, Class<? extends Throwable> throwable) {
             build(r -> {
-                WebApplicationException exception = new WebApplicationException(r);
-                when(router.dispatch(any(), eq(resourceContext))).thenThrow(exception);
+                if (throwable == null) {
+                    WebApplicationException exception = new WebApplicationException(r);
+                    when(router.dispatch(any(), eq(resourceContext))).thenThrow(exception);
+                } else {
+                    when(router.dispatch(any(), eq(resourceContext))).thenThrow(throwable);
+                }
             });
         }
 
